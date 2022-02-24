@@ -2,7 +2,8 @@
 title: "Firefighter"
 author: "Yoni"
 date: "2/13/2022"
-output: html_document
+output: github_document
+always_allow_html: true
 ---
 
 # Intro
