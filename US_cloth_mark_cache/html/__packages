@@ -1,0 +1,9 @@
+easypackages
+httr
+jsonlite
+XML
+dplyr
+tidyr
+ggplot2
+ggpubr
+knitr

@@ -1,0 +1,377 @@
+---
+title: "Firefighter"
+author: "Yoni"
+date: "2/13/2022"
+output: html_document
+---
+
+# Intro
+
+The goal of this portfolio is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
+
+One can ask, should the work of emergency, ans specifically firefighters, be paid by the amount of cases?
+
+Here are some pros and cons:
+
+Pros:
+
+- Harder workers get paid better
+
+- Prevent inflation in work conditions cause by cases
+
+- Appealing workers when the are needed the most (in our case- desertification)
+
+Cons:
+
+- Morel Hazard against preventing emergency cases
+
+- Encouraging of splitting cases "on paper"
+
+- Cause unpredictable salary
+
+The method is using data from the API fo [Data USA](https://datausa.io/profile/soc/firefighters), and comparing it to available data about wildfires. We will see that although the sample is too small, some information can be found.
+
+so let's get started with the libraries:
+
+# Set data
+
+```{r libraries, warning=FALSE, message=FALSE}
+library(easypackages)
+#tools
+libraries('httr','jsonlite','XML')
+libraries('dplyr','tidyr')
+#visuals
+libraries('ggplot2','ggpubr','knitr')
+```
+
+## Wage data importing
+
+This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefighters)
+
+```{r data usa api, message=FALSE, results='hide', warning=FALSE}
+wage_rl<-
+  "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
+get_fire<- GET(wage_rl)
+my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
+my_Json<- fromJSON(my_content)
+open_fire <- glimpse(my_Json )
+```
+```{r data usa api 2}
+df_fire<- open_fire$data %>%
+  select(c(2,4:7)) %>%
+  mutate(Year= as.numeric(Year)) %>%
+  rename(Average_Wage= 'Average Wage') %>%
+  rename('Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
+  mutate(log_Wage= log(Average_Wage) )
+
+AB<- function(vec) #function to make "Dothan City PUMA, AL" to "AL"
+  {split<- rev(strsplit(vec, ", ")[[1]] )
+  return(as.vector (split[1]) ) }
+
+df_fire$US_code<- as.character(unlist (lapply(df_fire$PUMA, AB)) )
+```
+
+Here you can see the data splitted by year and states
+
+```{r simple vis}
+pres_yir<- table(df_fire$Year) #add to bar plot
+
+{bp<- barplot(table(df_fire$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
+#grid(nx= NA, ny= NULL)
+text(bp,pres_yir-6,labels = pres_yir)}
+
+df_fire<- df_fire %>%
+  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing
+  
+{bp<- barplot(sort(table(df_fire$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
+grid(nx= NA, ny= NULL, col = "black")}
+```
+
+### Wiki coder
+
+We are using Wikidata to import [key](https://www.wikidata.org/wiki/Wikidata:Lists/US_states) from 2- letters to state name.
+```{r wiki, warning=FALSE}
+wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')
+wiki_contnt<- content(wiki_get, "text")
+wiki_state<- readHTMLTable(wiki_contnt, trim=T, as.data.frame=T, header= T)
+wiki_state<-bind_rows(wiki_state)
+
+wiki_state<- wiki_state[-(1:2),] %>%
+  select(V1:V3) %>%
+  drop_na(V2) %>%
+  `colnames<-`(c("State","US_code","Instance_of"))
+
+kable(wiki_state[1:4,1:2])
+
+df_fire <- merge(df_fire,wiki_state,by="US_code")
+rm(wiki_contnt,wiki_state)
+rm(my_content, my_Json, open_fire)
+```
+
+```{r script delete 2018, include=FALSE, eval=FALSE}
+---
+get_18<- GET("https://www.iii.org/table-archive/221865/file")
+my_content18<- content(get_18, as= 'text', encoding = "UTF-8")
+m_TF<- F
+pre_df18<- readHTMLTable(my_content18, trim=T, as.data.frame=T, header=m_TF)
+if(m_TF)
+  {bind_df18<- bind_rows(pre_df18)[4:6]} else {bind_df18<-pre_df18[[3]]}
+colnames(bind_df18)<- c('State','fires_Num','Num_acres_burned')
+the_df18<- bind_df18[!is.na(bind_df18$V2),]
+the_df18<- the_df18[!duplicated(the_df18[,'State']),] #delete duplicate states
+the_df18$Year<- 2018 #year parameter for future combine
+---
+```
+### Download Automation
+
+The data been taken from the [Insurance Information Institute](https://www.iii.org/table-archive/23284)
+
+You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-statistics-wildfires'), but the imported data from Data USA reach only 2019.
+
+```{r firefield outomation}
+call_fire<- function(x,year, m_TF= T)
+  {
+  my_get<- GET(x)
+  my_content<- content(my_get, as= 'text', encoding = "UTF-8")
+  pre_df<- readHTMLTable(my_content, trim=T, as.data.frame=T, header=m_TF)
+  if(m_TF)
+  {bind_df<- bind_rows(pre_df)[4:6]} else {bind_df<-pre_df[[3]]}
+  names(bind_df)<- c('State','fires_Num','Num_acres_burned')
+  the_df<- bind_df[!is.na(bind_df$State),]
+  the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
+  the_df$Year<- year #year parameter for future combine
+  return(the_df)
+  }
+```
+
+```{r download 2014-2018, warning=FALSE}
+df_14<- call_fire("https://www.iii.org/table-archive/214725/file", 2014)
+df_15<- call_fire("https://www.iii.org/table-archive/218674/file", 2015)
+df_16<- call_fire("https://www.iii.org/table-archive/220226/file", 2016)
+df_17<- call_fire("https://www.iii.org/table-archive/220932/file", 2017)
+df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)[-1,] #bug fixing
+df_19<- call_fire("https://www.iii.org/table-archive/222809/file", 2019)
+
+no_coma<- function(x) #from character"12,345" to numeric 12345
+  {as.numeric(gsub(",","", x))}
+
+firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
+  mutate(fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
+  mutate(Num_acres_burned=replace(Num_acres_burned, Num_acres_burned=="(1)", 0)) %>%
+  mutate(Num_acres_burned= no_coma(Num_acres_burned))%>%
+  mutate(fires_Num= no_coma(fires_Num))
+# merge & head
+fire_full<- (merge(firelist, df_fire, by= c("State", "Year"))) %>%
+  select(-c(9,11))
+```
+
+Here are some rows from the data I combined
+
+```{r lable fire_full}
+kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
+```
+
+# Overlooking the Data
+
+We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
+
+```{r vizualization, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
+count_state<-fire_full %>%   #sum by country
+  count(State, sort= T,name= "Times apear")
+big_6 <- as.vector(count_state[1:6,1])
+full_6<- fire_full$State%in%big_6
+fire_full$big6<- full_6
+big_6
+mu_fire<- mean(df_fire$Average_Wage)
+mu_fire6<- mean(df_fire$Average_Wage[full_6])
+
+paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ for the top 6 reported. the difference is", round(mu_fire6-mu_fire,1),"$")
+
+t.fire<- t.test(fire_full$Average_Wage[full_6],fire_full$Average_Wage[-full_6])
+t.fire
+```
+Here are the progress of acres burned in the us. from a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
+
+```{r fire progress, warning=FALSE, message=FALSE}
+
+big_2 <- as.vector(count_state[1:6,1])
+full_2<- fire_full$State%in% c("California", "Alaska")
+
+fire_full [full_2,]%>%
+  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
+  labs(title = "Burn Forrest CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+  theme_dark()+  scale_y_continuous(labels = scales::comma)
+
+fire_full [(full_2)==0 & fire_full$fires_Num>= 1 ,]%>%
+  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
+  labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+  theme_dark()+ylim(0,400000) #+scale_y_continuous(labels = scales::comma)
+```
+
+Were we can see the distribution of avarage wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
+
+```{r histogram, warning=FALSE, message=FALSE}
+fire_full %>%
+  ggplot(aes(x= Average_Wage, fill= full_6))+ scale_fill_brewer(palette="Set2")+
+  geom_density(color= "black",position="identity",alpha=0.75 )+
+  geom_vline(xintercept= mu_fire,color= "black" ,lty= 1, size= 0.75)+
+  geom_vline(xintercept= t.fire$estimate[1], color= "sandybrown",lty= "dashed", size= 0.5)+
+  geom_vline(xintercept= t.fire$estimate[2], color= "darkseagreen" ,lty= 'dashed', size= 0.5)+
+  labs(title = "Average Wage Curve",caption = "orange: big 6 states, green: the rest of states")+  scale_x_continuous(labels = scales::comma)+theme(legend.position="none")+
+  theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))#+theme_bw()
+
+fire_full[full_6,] %>%
+  ggplot(aes(y= Average_Wage ,x= State, fill= State))+
+  geom_boxplot()+labs(title = "Avarage Wage by State of big 6")+ ylab("Average Wage")+theme_bw()+
+  xlab(" ")+scale_y_continuous(labels = scales::comma)+theme(legend.position="none")
+```
+we see even top 6 reported states are nit homogenize group.
+
+And what about time effect? here we can see 
+
+```{r time vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
+fire_full %>%
+  ggplot(aes(x= factor(Year), y= Average_Wage))+
+  geom_boxplot(outlier.colour="24e2ff", outlier.shape=4,
+               outlier.size=1, fill='#24e2ff', color="black")+
+  geom_hline(yintercept= mu_fire, linetype="dashed",
+             color = "black", size=0.5)+
+  labs(title = "Avarage Wage by Year", xlab= "Year")+
+  xlab("Year")+ylab("Wage")+theme_bw()+ scale_y_continuous(labels = scales::comma)
+
+fire_full[full_6,] %>%
+  ggplot(aes(y= Average_Wage,x= Year,colour= State))+
+  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
+  labs(title = "Avarage Wage by Year Big 6", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+  theme_dark()+  scale_y_continuous(labels = scales::comma)
+```
+Although there is no visually clear time effect by year, there are some trends. Note that it is might due to different reported stations each year.
+
+Here we will try to see whether there is effect of number of acres burned to average wage. surprisingly, there is none.
+
+```{r AB vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
+A<- fire_full %>%
+  ggplot(aes(x= Num_acres_burned ,y= log_Wage))+geom_smooth()+
+  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
+  labs(title = "Acres Effect on Wage State of All")+xlab("Acres burned")+
+  scale_x_continuous(labels = scales::comma)
+
+B<- fire_full[full_6,] %>%
+  ggplot(aes(x= Num_acres_burned ,y= log_Wage))+geom_smooth()+
+  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
+  labs(title = "Acres Effect on Wage State of Big 6",caption = "red: lm model, blue: loess model")+xlab("Acres burned")+
+  scale_x_continuous(labels = scales::comma)
+
+ggarrange(A,B, ncol = 1, nrow = 2)
+```
+Clearly, there is no positive effect of burned Acres on average wages, and there might be even negative correlation. even though, I do not believe this is causation.
+
+# Models
+
+3 models presented here of predicting the average wage
+
+- lm_year : only year effect
+
+- lm_state: only state effect
+
+- lm_comb : year and state effect
+
+this section is a little bit long, only due to the 52 states.
+
+```{r Models, cache=TRUE}
+lm_year<- lm(data= df_fire, Average_Wage~ Year)
+lm_state<-lm(data= df_fire, Average_Wage~ US_code)
+lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
+
+#anova test to Year effect
+anova(lm_state, lm_comb)
+#anova test to State effect
+anova(lm_year , lm_comb)
+
+sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T, collapse.se = T,
+                    dv.labels = c("lm comb","lm year","lm state"))
+```
+
+We see significant effect of the year.
+
+finaly, now we will see the effect on the wage using the burned acres 
+
+- lm_CA: only in California
+
+- lm_big6: only the big 6
+
+- lm_all all of the states
+
+```{r by acres model, cache=TRUE}
+lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
+             Average_Wage~Num_acres_burned)
+lm_big6<- lm(data = fire_full[full_6,],
+             Average_Wage~Num_acres_burned+US_code )
+lm_all<- lm(data = fire_full,
+             Average_Wage~Num_acres_burned )
+lm_acr_time<- lm(data = fire_full,
+             Average_Wage~Num_acres_burned+Year )
+
+sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T, collapse.se = T,
+                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+```
+
+```{r by num model, cache=TRUE}
+lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
+             Average_Wage~fires_Num)
+lm_big6_2<- lm(data = fire_full[full_6,],
+             Average_Wage~fires_Num+US_code )
+lm_all2<- lm(data = fire_full,
+             Average_Wage~fires_Num )
+lm_acr_time2<- lm(data = fire_full,
+             Average_Wage~fires_Num+Year )
+
+sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T, collapse.se = T,
+                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+```
+
+After all the analyzing, we got to the result and now we can see, that according to our data, ***there is no effect of the burned arced on the salary of firefighters, nor there is of the number of wildfires on the salary***.
+
+# Discussion
+
+As far as we can see with the data above, there is no short term correlation between wildfires and firefighters wage. Some explanation to this could be:
+
+ - More fires correlated with more firefighters
+
+ - Wildfires takes only a small share of the firefighters salary
+
+ - The effect can be seen only looking by role
+
+ - Each state firm has different approach
+
+And maybe simply there is no correlation. As far as I learn from the data, the $H_0$ of no correlation was not rejected.
+
+On the other hand, there is significant effect of the year of over 1,400$ per year, as we can see here:
+
+```{r release year, message=FALSE, warning= FALSE, echo=FALSE}
+year_paste<- fire_full$Average_Wage~fire_full$Year
+library(ggpmisc)
+fire_full[full_6,] %>%
+  ggplot(aes(y= Average_Wage,x= Year))+#, fill= factor(Year) ))+
+  geom_smooth(method = "lm")+
+  scale_color_brewer(palette="Accent")+
+  labs(title = "Predicted Wage by Year", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+  theme_bw()+  scale_y_continuous(labels = scales::comma)+labs(fill="Year")+
+     stat_poly_eq(formula = Average_Wage~Year, 
+                aes(label = paste(..eq.label.., ..rr.label..,sep = "~~~"))
+                ,parse = TRUE,label.x.npc = "right")
+  #geom_text(x = 2015, y = 75000,label= as.character(as.expression((year_paste))) ,parse = T)#???
+```
+As usual when it comes to wages, the effect is more stable manually than the cause due to employment agreement.
+
+### Conclusion
+
+We evaluated there is no effect of the wildfires cases on firefighters wage. We say this is not necessarily bad.
+
+In my opinion, the intensiveness of the firefighters shifts can by reflected in their salary as a limited bonus. This way, the salary will not by too varied, but hard work will steal be rewarded in the payment. In addition, long term plan of salary that would attract good potential firefighters is a fundamental need for any planned market.
+otherwise, in a moment of need, the firefighters can just look for another job, like the [CNN told in 2021](https://edition.cnn.com/2021/06/26/us/california-wildfires-hotshot-firefighter-shortage/index.html)
+
+
+###collect soft data of why wage
