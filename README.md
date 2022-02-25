@@ -14,10 +14,10 @@ This was created for 2 main reasons
 
 ## Contents
 
-🚒 Recomended- see html presentation- [RMarkdown](https://github.com/YoniGR94/Firefighter_wage_progres/blob/main/US_cloth_mark.md)
+🚒 Recomended- see html presentation- [RMarkdown](https://github.com/YoniGR94/Firefighter_wage_progres/blob/main/firefighters_lm_wildfires.md)
 
-🚒 read code- [RMarkdown script](https://github.com/YoniGR94/Firefighter_wage_progres/blob/main/US_cloth_mark.Rmd)
+🚒 read code- [RMarkdown script](https://github.com/YoniGR94/Firefighter_wage_progres/blob/main/firefighters_lm_wildfires.Rmd)
 
-🚒 copy plots and png- [figure gfm](https://github.com/YoniGR94/Firefighter_wage_progres/tree/main/US_cloth_mark_files)
+🚒 copy plots and png- [figure gfm](https://github.com/YoniGR94/Firefighter_wage_progres/tree/main/firefighters_lm_wildfires_files)
 
 ![]()
