@@ -1,7 +1,7 @@
 Firefighter
 ================
 Yoni
-2/13/2022
+Feb 2022
 
 # Intro
 
@@ -25,7 +25,7 @@ Pros:
 
 Cons:
 
--   Morel Hazard against preventing emergency cases
+-   Moral Hazard against preventing emergency cases
 
 -   Encouraging of splitting cases “on paper”
 
@@ -78,7 +78,7 @@ AB<- function(vec) #function to make "Dothan City PUMA, AL" to "AL"
 df_fire$US_code<- as.character(unlist (lapply(df_fire$PUMA, AB)) )
 ```
 
-Here you can see the data splitted by year and states
+Here you can see the data divided by year and countries
 
 ``` r
 pres_yir<- table(df_fire$Year) #add to bar plot
@@ -185,12 +185,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|  State   | Year | fires_Num | Num_acres_burned | US_code |                                             PUMA                                              | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:--------:|:----:|:---------:|:----------------:|:-------:|:---------------------------------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-| Oklahoma | 2014 |   1007    |      157080      |   OK    |                                  Southeast Oklahoma PUMA, OK                                  |   45066.44   |      11879.80      |  10.72   |
-| Illinois | 2019 |     2     |        41        |   IL    |                               Joliet & Troy Townships PUMA, IL                                |   78761.08   |      25529.77      |  11.27   |
-|  Alaska  | 2019 |    720    |     2498159      |   AK    | Greater Fairbanks, Greater Juneau, Ketchikan Gateway Borough & Road-Connected Alaska PUMA, AK |   20777.68   |      15739.47      |   9.94   |
-| Illinois | 2018 |     6     |       120        |   IL    |               Maine, Norwood Park Townships & Chicago CityEdison Park PUMA, IL                |   81756.42   |      24107.16      |  11.31   |
+|   State    | Year | fires_Num | Num_acres_burned | US_code |                                             PUMA                                              | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:----------:|:----:|:---------:|:----------------:|:-------:|:---------------------------------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
+|  Kentucky  | 2019 |    755    |      11714       |   KY    |               Northern Kentucky Area Development District (Southeast) PUMA, KY                |   69995.96   |      26424.74      |  11.16   |
+|  Georgia   | 2014 |   3562    |      19199       |   GA    | Central Savannah River Area Regional Commission (West & Outside Richmond & Columbia) PUMA, GA |   23108.26   |      25533.07      |  10.05   |
+| California | 2019 |   8194    |      259148      |   CA    |                                Huntington Beach City PUMA, CA                                 |  102406.96   |      43040.31      |  11.54   |
+|  Arizona   | 2018 |   2000    |      165356      |   AZ    |                     Tucson City (Far Southeast) & Sahuarita Town PUMA, AZ                     |   43731.18   |      18825.74      |  10.69   |
 
 # Overlooking the Data
 
@@ -2103,8 +2103,9 @@ data, the *H*<sub>0</sub> of no correlation was not rejected.
 On the other hand, there is significant effect of the year of over
 1,400$ per year, as we can see here:
 
-![](US_cloth_mark_files/figure-gfm/release%20year-1.png)<!-- --> As
-usual when it comes to wages, the effect is more stable manually than
+![](US_cloth_mark_files/figure-gfm/release%20year-1.png)<!-- -->
+
+As usual when it comes to wages, the effect is more stable manually than
 the cause due to employment agreement.
 
 ### Conclusion
@@ -2120,5 +2121,3 @@ firefighters is a fundamental need for any planned market. otherwise, in
 a moment of need, the firefighters can just look for another job, like
 the [CNN told in
 2021](https://edition.cnn.com/2021/06/26/us/california-wildfires-hotshot-firefighter-shortage/index.html)
-
-###collect soft data of why wage

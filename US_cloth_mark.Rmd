@@ -1,7 +1,7 @@
 ---
 title: "Firefighter"
 author: "Yoni"
-date: "2/13/2022"
+date: "Feb 2022"
 output: github_document
 always_allow_html: true
 ---
@@ -24,7 +24,7 @@ Pros:
 
 Cons:
 
-- Morel Hazard against preventing emergency cases
+- Moral Hazard against preventing emergency cases
 
 - Encouraging of splitting cases "on paper"
 
@@ -72,7 +72,7 @@ AB<- function(vec) #function to make "Dothan City PUMA, AL" to "AL"
 df_fire$US_code<- as.character(unlist (lapply(df_fire$PUMA, AB)) )
 ```
 
-Here you can see the data splitted by year and states
+Here you can see the data divided by year and countries
 
 ```{r simple vis}
 pres_yir<- table(df_fire$Year) #add to bar plot
@@ -191,6 +191,7 @@ paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ 
 t.fire<- t.test(fire_full$Average_Wage[full_6],fire_full$Average_Wage[-full_6])
 t.fire
 ```
+
 Here are the progress of acres burned in the us. from a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
 
 ```{r fire progress, warning=FALSE, message=FALSE}
@@ -213,7 +214,7 @@ fire_full [(full_2)==0 & fire_full$fires_Num>= 1 ,]%>%
 
 Were we can see the distribution of avarage wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
 
-```{r histogram, warning=FALSE, message=FALSE}
+```{r histogram, warning=FALSE, message=FALSE, cache=TRUE}
 fire_full %>%
   ggplot(aes(x= Average_Wage, fill= full_6))+ scale_fill_brewer(palette="Set2")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
@@ -351,7 +352,7 @@ And maybe simply there is no correlation. As far as I learn from the data, the $
 
 On the other hand, there is significant effect of the year of over 1,400$ per year, as we can see here:
 
-```{r release year, message=FALSE, warning= FALSE, echo=FALSE}
+```{r release year, message=FALSE, warning= FALSE, echo=FALSE, cache=TRUE}
 year_paste<- fire_full$Average_Wage~fire_full$Year
 library(ggpmisc)
 fire_full[full_6,] %>%
@@ -365,6 +366,7 @@ fire_full[full_6,] %>%
                 ,parse = TRUE,label.x.npc = "right")
   #geom_text(x = 2015, y = 75000,label= as.character(as.expression((year_paste))) ,parse = T)#???
 ```
+
 As usual when it comes to wages, the effect is more stable manually than the cause due to employment agreement.
 
 ### Conclusion
@@ -373,6 +375,3 @@ We evaluated there is no effect of the wildfires cases on firefighters wage. We 
 
 In my opinion, the intensiveness of the firefighters shifts can by reflected in their salary as a limited bonus. This way, the salary will not by too varied, but hard work will steal be rewarded in the payment. In addition, long term plan of salary that would attract good potential firefighters is a fundamental need for any planned market.
 otherwise, in a moment of need, the firefighters can just look for another job, like the [CNN told in 2021](https://edition.cnn.com/2021/06/26/us/california-wildfires-hotshot-firefighter-shortage/index.html)
-
-
-###collect soft data of why wage
