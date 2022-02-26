@@ -47,6 +47,7 @@ libraries('httr','jsonlite','XML')
 libraries('dplyr','tidyr')
 #visuals
 libraries('ggplot2','ggpubr','knitr')
+libraries('ggridges','viridis','hrbrthemes')
 ```
 
 ## Wage data importing
@@ -150,7 +151,7 @@ call_fire<- function(x,year, m_TF= T)
   pre_df<- readHTMLTable(my_content, trim=T, as.data.frame=T, header=m_TF)
   if(m_TF)
   {bind_df<- bind_rows(pre_df)[4:6]} else {bind_df<-pre_df[[3]]}
-  names(bind_df)<- c('State','fires_Num','Num_acres_burned')
+  names(bind_df)<- c('State','fires_Num','Acres_burned')
   the_df<- bind_df[!is.na(bind_df$State),]
   the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
   the_df$Year<- year #year parameter for future combine
@@ -171,8 +172,8 @@ no_coma<- function(x) #from character"12,345" to numeric 12345
 
 firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
   mutate(fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
-  mutate(Num_acres_burned=replace(Num_acres_burned, Num_acres_burned=="(1)", 0)) %>%
-  mutate(Num_acres_burned= no_coma(Num_acres_burned))%>%
+  mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
+  mutate(Acres_burned= no_coma(Acres_burned))%>%
   mutate(fires_Num= no_coma(fires_Num))
 # merge & head
 fire_full<- (merge(firelist, df_fire, by= c("State", "Year"))) %>%
@@ -185,12 +186,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Num_acres_burned | US_code |                                 PUMA                                 | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:----------:|:----:|:---------:|:----------------:|:-------:|:--------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-|  Maryland  | 2019 |    140    |       1498       |   MD    |                       Hagerstown City PUMA, MD                       |   36597.64   |      52748.10      |  10.51   |
-| New Jersey | 2017 |    735    |       5144       |   NJ    |                 Vineland & Millville Cities PUMA, NJ                 |   40476.45   |      7730.59       |  10.61   |
-|  Florida   | 2015 |   2422    |      73432       |   FL    | Columbia, Levy, Bradford, Gilchrist, Dixie & Union Counties PUMA, FL |   29503.55   |      17040.03      |  10.29   |
-| California | 2018 |   8054    |     1823153      |   CA    |                        Redding City PUMA, CA                         |   56579.60   |      39490.10      |  10.94   |
+|     State     | Year | fires_Num | Acres_burned | US_code |                            PUMA                            | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:-------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------------:|:------------:|:------------------:|:--------:|
+|     Texas     | 2017 |   9827    |    734682    |   TX    |                  Kaufman County PUMA, TX                   |   63276.08   |      20873.40      |  11.06   |
+| Massachusetts | 2017 |   1216    |     844      |   MA    |           Newton City & Brookline Town PUMA, MA            |   78678.66   |      28688.88      |  11.27   |
+|    Alabama    | 2019 |   1107    |    22158     |   AL    |   Coffee, Covington, Butler & Crenshaw Counties PUMA, AL   |   44737.07   |      29446.56      |  10.71   |
+|  California   | 2014 |   7865    |    555044    |   CA    | Rancho Santa Margarita City (East) & Ladera Ranch PUMA, CA |   68050.01   |      40644.21      |  11.13   |
 
 # Overlooking the Data
 
@@ -221,11 +222,17 @@ data we see that California and Alaska suffer the most from wildfires,
 and also has the biggest change in wildfires
 
 ``` r
+count_fire<-fire_full %>%   #sum by country
+  group_by(State) %>%
+  summarise(much= sum(fires_Num))
+fire_min <- count_fire[order(count_fire$much,decreasing = T),]
+min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
+
 big_2 <- as.vector(count_state[1:6,1])
 full_2<- fire_full$State%in% c("California", "Alaska")
 
 fire_full [full_2,]%>%
-  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+  ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
   theme_dark()+  scale_y_continuous(labels = scales::comma)
@@ -234,10 +241,15 @@ fire_full [full_2,]%>%
 ![](firefighters_lm_wildfires_files/figure-gfm/fire%20progress-1.png)<!-- -->
 
 ``` r
-fire_full [(full_2)==0 & fire_full$fires_Num>= 1 ,]%>%
-  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+fire_full [min_fire_gg,]%>%
+  ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
+        plot.background = element_rect(fill = "grey"),
+        legend.key.height = unit(1, 'cm'), #change legend key height
+        legend.text = element_text(size=1) #change legend text font size
+        )+
   theme_dark()+ylim(0,400000) #+scale_y_continuous(labels = scales::comma)
 ```
 
@@ -248,30 +260,43 @@ In addition, tehere is boxplot of the big 6 wages.
 
 ``` r
 fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= full_6))+ scale_fill_brewer(palette="Set2")+
+  ggplot(aes(x= Average_Wage, fill= full_6))+
+  scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
-  geom_vline(xintercept= mu_fire,color= "black" ,lty= 1, size= 0.75)+
-  geom_vline(xintercept= t.fire$estimate[1], color= "sandybrown",lty= "dashed", size= 0.5)+
-  geom_vline(xintercept= t.fire$estimate[2], color= "darkseagreen" ,lty= 'dashed', size= 0.5)+
-  labs(title = "Average Wage Curve",caption = "orange: big 6 states, green: the rest of states")+  scale_x_continuous(labels = scales::comma)+theme(legend.position="none")+
-  theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))#+theme_bw()
+  geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
+  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown",
+             lty= "dashed", size= 0.5)+
+  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen" ,
+             lty= 'dashed', size= 0.5)+
+  labs(title = "Average Wage Curve",caption="orange: big 6 states,
+       green: the rest of states")+ scale_x_continuous(labels = scales::comma)+
+  theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/histogram-1.png)<!-- -->
 
 ``` r
 fire_full[full_6,] %>%
-  ggplot(aes(y= Average_Wage ,x= State, fill= State))+
-  geom_boxplot()+labs(title = "Avarage Wage by State of big 6")+ ylab("Average Wage")+theme_bw()+
-  xlab(" ")+scale_y_continuous(labels = scales::comma)+theme(legend.position="none")
+  ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005) +
+  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95) +
+  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage") +ylab(" ")+
+  theme_ipsum() +scale_x_continuous(labels=scales::comma)+
+    theme(
+      legend.position="none",
+      panel.spacing = unit(0.1, "lines"),
+      strip.text.x = element_text(size = 6)
+    )
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/histogram-2.png)<!-- -->
+
 we see even top 6 reported states are nit homogenize group.
 
 And what about time effect? here we can see
 
 ![](firefighters_lm_wildfires_files/figure-gfm/time%20vis-1.png)<!-- -->![](firefighters_lm_wildfires_files/figure-gfm/time%20vis-2.png)<!-- -->
+
 Although there is no visually clear time effect by year, there are some
 trends. Note that it is might due to different reported stations each
 year.
@@ -280,6 +305,7 @@ Here we will try to see whether there is effect of number of acres
 burned to average wage. surprisingly, there is none.
 
 ![](firefighters_lm_wildfires_files/figure-gfm/AB%20vis-1.png)<!-- -->
+
 Clearly, there is no positive effect of burned Acres on average wages,
 and there might be even negative correlation. even though, I do not
 believe this is causation.
@@ -305,34 +331,40 @@ lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
 anova(lm_state, lm_comb)
 ```
 
-    ## Analysis of Variance Table
-    ## 
-    ## Model 1: Average_Wage ~ US_code
-    ## Model 2: Average_Wage ~ Year + US_code
-    ##   Res.Df        RSS Df  Sum of Sq      F  Pr(>F)   
-    ## 1    655 3.6485e+11                                
-    ## 2    654 3.6030e+11  1 4551573266 8.2619 0.00418 **
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+## Analysis of Variance Table
+## 
+## Model 1: Average_Wage ~ US_code
+## Model 2: Average_Wage ~ Year + US_code
+##   Res.Df        RSS Df  Sum of Sq      F  Pr(>F)   
+## 1    655 3.6485e+11                                
+## 2    654 3.6030e+11  1 4551573266 8.2619 0.00418 **
+## ---
+## Signif. codes:  
+## 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
 
 ``` r
 #anova test to State effect
 anova(lm_year , lm_comb)
 ```
 
-    ## Analysis of Variance Table
-    ## 
-    ## Model 1: Average_Wage ~ Year
-    ## Model 2: Average_Wage ~ Year + US_code
-    ##   Res.Df        RSS Df  Sum of Sq     F    Pr(>F)    
-    ## 1    701 5.2518e+11                                  
-    ## 2    654 3.6030e+11 47 1.6489e+11 6.368 < 2.2e-16 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+## Analysis of Variance Table
+## 
+## Model 1: Average_Wage ~ Year
+## Model 2: Average_Wage ~ Year + US_code
+##   Res.Df        RSS Df  Sum of Sq     F    Pr(>F)    
+## 1    701 5.2518e+11                                  
+## 2    654 3.6030e+11 47 1.6489e+11 6.368 < 2.2e-16 ***
+## ---
+## Signif. codes:  
+## 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
 
 ``` r
-sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T, collapse.se = T,
-                    dv.labels = c("lm comb","lm year","lm state"))
+sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
 ```
 
 <table style="border-collapse:collapse; border:none;">
@@ -1460,16 +1492,16 @@ finaly, now we will see the effect on the wage using the burned acres
 
 ``` r
 lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
-             Average_Wage~Num_acres_burned)
+             Average_Wage~Acres_burned)
 lm_big6<- lm(data = fire_full[full_6,],
-             Average_Wage~Num_acres_burned+US_code )
+             Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
-             Average_Wage~Num_acres_burned )
+             Average_Wage~Acres_burned )
 lm_acr_time<- lm(data = fire_full,
-             Average_Wage~Num_acres_burned+Year )
+             Average_Wage~Acres_burned+Year )
 
-sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T, collapse.se = T,
-                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
 ```
 
 <table style="border-collapse:collapse; border:none;">
@@ -1550,7 +1582,7 @@ p
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-Num acres burned
+Acres burned
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.00<br>(0.01)
@@ -1778,8 +1810,8 @@ lm_all2<- lm(data = fire_full,
 lm_acr_time2<- lm(data = fire_full,
              Average_Wage~fires_Num+Year )
 
-sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T, collapse.se = T,
-                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T,
+                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
 ```
 
 <table style="border-collapse:collapse; border:none;">

@@ -7,5 +7,9 @@ tidyr
 ggplot2
 ggpubr
 knitr
+ggridges
+viridisLite
+viridis
+hrbrthemes
 ggpp
 ggpmisc

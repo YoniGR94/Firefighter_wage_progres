@@ -43,6 +43,21 @@ libraries('httr','jsonlite','XML')
 libraries('dplyr','tidyr')
 #visuals
 libraries('ggplot2','ggpubr','knitr')
+libraries('ggridges','viridis','hrbrthemes')
+
+```
+```{r, include=FALSE}
+options(width = 60)
+local({
+  hook_output <- knitr::knit_hooks$get('output')
+  knitr::knit_hooks$set(output = function(x, options) {
+    if (!is.null(options$max.height)) options$attr.output <- c(
+      options$attr.output,
+      sprintf('style="max-height: %s;"', options$max.height)
+    )
+    hook_output(x, options)
+  })
+})
 ```
 
 ## Wage data importing
@@ -57,6 +72,7 @@ my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
 my_Json<- fromJSON(my_content)
 open_fire <- glimpse(my_Json )
 ```
+
 ```{r data usa api 2}
 df_fire<- open_fire$data %>%
   select(c(2,4:7)) %>%
@@ -91,6 +107,7 @@ grid(nx= NA, ny= NULL, col = "black")}
 ### Wiki coder
 
 We are using Wikidata to import [key](https://www.wikidata.org/wiki/Wikidata:Lists/US_states) from 2- letters to state name.
+
 ```{r wiki, warning=FALSE}
 wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')
 wiki_contnt<- content(wiki_get, "text")
@@ -117,7 +134,7 @@ m_TF<- F
 pre_df18<- readHTMLTable(my_content18, trim=T, as.data.frame=T, header=m_TF)
 if(m_TF)
   {bind_df18<- bind_rows(pre_df18)[4:6]} else {bind_df18<-pre_df18[[3]]}
-colnames(bind_df18)<- c('State','fires_Num','Num_acres_burned')
+colnames(bind_df18)<- c('State','fires_Num','Acres_burned')
 the_df18<- bind_df18[!is.na(bind_df18$V2),]
 the_df18<- the_df18[!duplicated(the_df18[,'State']),] #delete duplicate states
 the_df18$Year<- 2018 #year parameter for future combine
@@ -137,7 +154,7 @@ call_fire<- function(x,year, m_TF= T)
   pre_df<- readHTMLTable(my_content, trim=T, as.data.frame=T, header=m_TF)
   if(m_TF)
   {bind_df<- bind_rows(pre_df)[4:6]} else {bind_df<-pre_df[[3]]}
-  names(bind_df)<- c('State','fires_Num','Num_acres_burned')
+  names(bind_df)<- c('State','fires_Num','Acres_burned')
   the_df<- bind_df[!is.na(bind_df$State),]
   the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
   the_df$Year<- year #year parameter for future combine
@@ -158,8 +175,8 @@ no_coma<- function(x) #from character"12,345" to numeric 12345
 
 firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
   mutate(fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
-  mutate(Num_acres_burned=replace(Num_acres_burned, Num_acres_burned=="(1)", 0)) %>%
-  mutate(Num_acres_burned= no_coma(Num_acres_burned))%>%
+  mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
+  mutate(Acres_burned= no_coma(Acres_burned))%>%
   mutate(fires_Num= no_coma(fires_Num))
 # merge & head
 fire_full<- (merge(firelist, df_fire, by= c("State", "Year"))) %>%
@@ -195,40 +212,62 @@ t.fire
 Here are the progress of acres burned in the us. from a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
 
 ```{r fire progress, warning=FALSE, message=FALSE}
+count_fire<-fire_full %>%   #sum by country
+  group_by(State) %>%
+  summarise(much= sum(fires_Num))
+fire_min <- count_fire[order(count_fire$much,decreasing = T),]
+min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
 
 big_2 <- as.vector(count_state[1:6,1])
 full_2<- fire_full$State%in% c("California", "Alaska")
 
 fire_full [full_2,]%>%
-  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+  ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
   theme_dark()+  scale_y_continuous(labels = scales::comma)
 
-fire_full [(full_2)==0 & fire_full$fires_Num>= 1 ,]%>%
-  ggplot(aes(y= Num_acres_burned,x= Year,colour= State))+
+fire_full [min_fire_gg,]%>%
+  ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
+   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
+        plot.background = element_rect(fill = "grey"),
+        legend.key.height = unit(1, 'cm'), #change legend key height
+        legend.text = element_text(size=1) #change legend text font size
+        )+
   theme_dark()+ylim(0,400000) #+scale_y_continuous(labels = scales::comma)
 ```
 
 Were we can see the distribution of avarage wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
 
-```{r histogram, warning=FALSE, message=FALSE, cache=TRUE}
+```{r histogram, warning=FALSE, message=FALSE}
 fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= full_6))+ scale_fill_brewer(palette="Set2")+
+  ggplot(aes(x= Average_Wage, fill= full_6))+
+  scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
-  geom_vline(xintercept= mu_fire,color= "black" ,lty= 1, size= 0.75)+
-  geom_vline(xintercept= t.fire$estimate[1], color= "sandybrown",lty= "dashed", size= 0.5)+
-  geom_vline(xintercept= t.fire$estimate[2], color= "darkseagreen" ,lty= 'dashed', size= 0.5)+
-  labs(title = "Average Wage Curve",caption = "orange: big 6 states, green: the rest of states")+  scale_x_continuous(labels = scales::comma)+theme(legend.position="none")+
-  theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))#+theme_bw()
+  geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
+  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown",
+             lty= "dashed", size= 0.5)+
+  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen" ,
+             lty= 'dashed', size= 0.5)+
+  labs(title = "Average Wage Curve",caption="orange: big 6 states,
+       green: the rest of states")+ scale_x_continuous(labels = scales::comma)+
+  theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))
 
 fire_full[full_6,] %>%
-  ggplot(aes(y= Average_Wage ,x= State, fill= State))+
-  geom_boxplot()+labs(title = "Avarage Wage by State of big 6")+ ylab("Average Wage")+theme_bw()+
-  xlab(" ")+scale_y_continuous(labels = scales::comma)+theme(legend.position="none")
+  ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005) +
+  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95) +
+  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage") +ylab(" ")+
+  theme_ipsum() +scale_x_continuous(labels=scales::comma)+
+    theme(
+      legend.position="none",
+      panel.spacing = unit(0.1, "lines"),
+      strip.text.x = element_text(size = 6)
+    )
 ```
+
 we see even top 6 reported states are nit homogenize group.
 
 And what about time effect? here we can see 
@@ -241,33 +280,35 @@ fire_full %>%
   geom_hline(yintercept= mu_fire, linetype="dashed",
              color = "black", size=0.5)+
   labs(title = "Avarage Wage by Year", xlab= "Year")+
-  xlab("Year")+ylab("Wage")+theme_bw()+ scale_y_continuous(labels = scales::comma)
+  xlab("Year")+ylab("Wage")+theme_bw()+ scale_y_continuous(labels= scales::comma)
 
 fire_full[full_6,] %>%
   ggplot(aes(y= Average_Wage,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
-  labs(title = "Avarage Wage by Year Big 6", xlab= "Year")+ xlab("Year")+ylab("Wage")+
-  theme_dark()+  scale_y_continuous(labels = scales::comma)
+  labs(title= "Avarage Wage by Year Big 6")+ xlab("Year")+ ylab("Wage")+
+  theme_dark()+ scale_y_continuous(labels= scales::comma)
 ```
+
 Although there is no visually clear time effect by year, there are some trends. Note that it is might due to different reported stations each year.
 
 Here we will try to see whether there is effect of number of acres burned to average wage. surprisingly, there is none.
 
 ```{r AB vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
 A<- fire_full %>%
-  ggplot(aes(x= Num_acres_burned ,y= log_Wage))+geom_smooth()+
+  ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
   labs(title = "Acres Effect on Wage State of All")+xlab("Acres burned")+
   scale_x_continuous(labels = scales::comma)
 
 B<- fire_full[full_6,] %>%
-  ggplot(aes(x= Num_acres_burned ,y= log_Wage))+geom_smooth()+
+  ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
-  labs(title = "Acres Effect on Wage State of Big 6",caption = "red: lm model, blue: loess model")+xlab("Acres burned")+
-  scale_x_continuous(labels = scales::comma)
+  labs(title= "Acres Effect on Wage State of Big 6",caption= "red: lm model, blue: loess model")+
+  xlab("Acres burned")+ scale_x_continuous(labels = scales::comma)
 
 ggarrange(A,B, ncol = 1, nrow = 2)
 ```
+
 Clearly, there is no positive effect of burned Acres on average wages, and there might be even negative correlation. even though, I do not believe this is causation.
 
 # Models
@@ -282,7 +323,7 @@ Clearly, there is no positive effect of burned Acres on average wages, and there
 
 this section is a little bit long, only due to the 52 states.
 
-```{r Models, cache=TRUE}
+```{r Models, cache=TRUE, max.height='30px'}
 lm_year<- lm(data= df_fire, Average_Wage~ Year)
 lm_state<-lm(data= df_fire, Average_Wage~ US_code)
 lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
@@ -292,8 +333,8 @@ anova(lm_state, lm_comb)
 #anova test to State effect
 anova(lm_year , lm_comb)
 
-sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T, collapse.se = T,
-                    dv.labels = c("lm comb","lm year","lm state"))
+sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
 ```
 
 We see significant effect of the year.
@@ -308,16 +349,16 @@ finaly, now we will see the effect on the wage using the burned acres
 
 ```{r by acres model, cache=TRUE}
 lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
-             Average_Wage~Num_acres_burned)
+             Average_Wage~Acres_burned)
 lm_big6<- lm(data = fire_full[full_6,],
-             Average_Wage~Num_acres_burned+US_code )
+             Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
-             Average_Wage~Num_acres_burned )
+             Average_Wage~Acres_burned )
 lm_acr_time<- lm(data = fire_full,
-             Average_Wage~Num_acres_burned+Year )
+             Average_Wage~Acres_burned+Year )
 
-sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T, collapse.se = T,
-                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
 ```
 
 ```{r by num model, cache=TRUE}
@@ -330,8 +371,8 @@ lm_all2<- lm(data = fire_full,
 lm_acr_time2<- lm(data = fire_full,
              Average_Wage~fires_Num+Year )
 
-sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T, collapse.se = T,
-                  dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T,
+                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
 ```
 
 After all the analyzing, we got to the result and now we can see, that according to our data, ***there is no effect of the burned arced on the salary of firefighters, nor there is of the number of wildfires on the salary***.
@@ -357,14 +398,13 @@ year_paste<- fire_full$Average_Wage~fire_full$Year
 library(ggpmisc)
 fire_full[full_6,] %>%
   ggplot(aes(y= Average_Wage,x= Year))+#, fill= factor(Year) ))+
-  geom_smooth(method = "lm")+
-  scale_color_brewer(palette="Accent")+
-  labs(title = "Predicted Wage by Year", xlab= "Year")+ xlab("Year")+ylab("Wage")+
-  theme_bw()+  scale_y_continuous(labels = scales::comma)+labs(fill="Year")+
-     stat_poly_eq(formula = Average_Wage~Year, 
+  geom_smooth(method = "lm")+ scale_color_brewer(palette="Accent")+
+  labs(title = "Predicted Wage by Year", xlab= "Year")+ xlab("Year")+
+  ylab("Wage")+theme_bw()+  scale_y_continuous(labels = scales::comma)+
+  labs(fill="Year")+stat_poly_eq(formula = Average_Wage~Year, 
                 aes(label = paste(..eq.label.., ..rr.label..,sep = "~~~"))
                 ,parse = TRUE,label.x.npc = "right")
-  #geom_text(x = 2015, y = 75000,label= as.character(as.expression((year_paste))) ,parse = T)#???
+#geom_text(x= 2015, y= 75000,label= as.character(as.expression((year_paste))),parse = T)#??
 ```
 
 As usual when it comes to wages, the effect is more stable manually than the cause due to employment agreement.
