@@ -186,12 +186,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|     State     | Year | fires_Num | Acres_burned | US_code |                            PUMA                            | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:-------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------------:|:------------:|:------------------:|:--------:|
-|     Texas     | 2017 |   9827    |    734682    |   TX    |                  Kaufman County PUMA, TX                   |   63276.08   |      20873.40      |  11.06   |
-| Massachusetts | 2017 |   1216    |     844      |   MA    |           Newton City & Brookline Town PUMA, MA            |   78678.66   |      28688.88      |  11.27   |
-|    Alabama    | 2019 |   1107    |    22158     |   AL    |   Coffee, Covington, Butler & Crenshaw Counties PUMA, AL   |   44737.07   |      29446.56      |  10.71   |
-|  California   | 2014 |   7865    |    555044    |   CA    | Rancho Santa Margarita City (East) & Ladera Ranch PUMA, CA |   68050.01   |      40644.21      |  11.13   |
+|   State    | Year | fires_Num | Acres_burned | US_code |                                     PUMA                                     | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
+|   Idaho    | 2017 |   1598    |    686262    |   ID    |                             Eagle City PUMA, ID                              |   30049.23   |      15903.24      |  10.31   |
+| California | 2014 |   7865    |    555044    |   CA    | Alpine, Amador, Calaveras, Inyo, Mariposa, Mono & Tuolumne Counties PUMA, CA |   21586.75   |      13366.14      |   9.98   |
+| California | 2014 |   7865    |    555044    |   CA    |                 Costa Mesa & Fountain Valley Cities PUMA, CA                 |  106317.92   |      65883.09      |  11.57   |
+|  Florida   | 2017 |   3280    |    298831    |   FL    |                           Hernando County PUMA, FL                           |   42625.69   |      47118.56      |  10.66   |
 
 # Overlooking the Data
 
@@ -2145,11 +2145,13 @@ the cause due to employment agreement.
 We evaluated there is no effect of the wildfires cases on firefighters
 wage. We say this is not necessarily bad.
 
-In my opinion, the intensiveness of the firefighters shifts can by
-reflected in their salary as a limited bonus. This way, the salary will
-not by too varied, but hard work will steal be rewarded in the payment.
-In addition, long term plan of salary that would attract good potential
-firefighters is a fundamental need for any planned market. otherwise, in
-a moment of need, the firefighters can just look for another job, like
-the [CNN told in
+In my opinion, the intensiveness of the firefighters shifts can be
+reflected in their salary as a limited bonus.This way, the salary will
+not be too varied, but the hard work will be rewarded with extra pay. In
+addition, a long-term salary plan that will attract good potential
+firefighters is a basic need in any planned planned market with demand
+growth.
+
+otherwise, in a moment of need, the firefighters can just look for
+another job, like the [CNN told in
 2021](https://edition.cnn.com/2021/06/26/us/california-wildfires-hotshot-firefighter-shortage/index.html)
