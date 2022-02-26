@@ -186,12 +186,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |                                     PUMA                                     | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-|   Idaho    | 2017 |   1598    |    686262    |   ID    |                             Eagle City PUMA, ID                              |   30049.23   |      15903.24      |  10.31   |
-| California | 2014 |   7865    |    555044    |   CA    | Alpine, Amador, Calaveras, Inyo, Mariposa, Mono & Tuolumne Counties PUMA, CA |   21586.75   |      13366.14      |   9.98   |
-| California | 2014 |   7865    |    555044    |   CA    |                 Costa Mesa & Fountain Valley Cities PUMA, CA                 |  106317.92   |      65883.09      |  11.57   |
-|  Florida   | 2017 |   3280    |    298831    |   FL    |                           Hernando County PUMA, FL                           |   42625.69   |      47118.56      |  10.66   |
+|     State      | Year | fires_Num | Acres_burned | US_code |                             PUMA                             | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:--------------:|:----:|:---------:|:------------:|:-------:|:------------------------------------------------------------:|:------------:|:------------------:|:--------:|
+|    New York    | 2015 |    186    |     3844     |   NY    |               Oyster Bay Town (South) PUMA, NY               |   99569.52   |      16890.08      |  11.51   |
+| North Carolina | 2014 |   4625    |    15601     |   NC    |                  Rocky Mount City PUMA, NC                   |   24321.23   |      25449.66      |  10.10   |
+|  North Dakota  | 2014 |    567    |     4069     |   ND    |                     Minot City PUMA, ND                      |   25617.06   |      12593.30      |  10.15   |
+| Massachusetts  | 2018 |    320    |     210      |   MA    | Hyde Park, Jamaica Plain, Roslindale & West Roxbury PUMA, MA |  104224.75   |      16281.14      |  11.55   |
 
 # Overlooking the Data
 
@@ -320,7 +320,7 @@ believe this is causation.
 
 -   lm_comb : year and state effect
 
-this section is a little bit long, only due to the 52 states.
+This section is a little bit long, only due to the 52 states.
 
 ``` r
 lm_year<- lm(data= df_fire, Average_Wage~ Year)
@@ -1482,7 +1482,8 @@ log-Likelihood
 
 We see significant effect of the year.
 
-finaly, now we will see the effect on the wage using the burned acres
+Finally, now we will see the effect on the wage using the burned acres
+in some models
 
 -   lm_CA: only in California
 
@@ -1497,11 +1498,9 @@ lm_big6<- lm(data = fire_full[full_6,],
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
-lm_acr_time<- lm(data = fire_full,
-             Average_Wage~Acres_burned+Year )
 
-sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T,
-                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA,lm_all,lm_big6, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6"))
 ```
 
 <table style="border-collapse:collapse; border:none;">
@@ -1517,9 +1516,6 @@ lm all
 </th>
 <th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
 lm big6
-</th>
-<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
-lm_acr time
 </th>
 </tr>
 <tr>
@@ -1542,12 +1538,6 @@ p
 Estimates
 </td>
 <td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
-p
-</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col8">
-Estimates
-</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col9">
 p
 </td>
 </tr>
@@ -1573,12 +1563,6 @@ p
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
--2930043.48<br>(1172623.70)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-<strong>0.013</strong>
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1602,12 +1586,6 @@ Acres burned
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.470
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-0.00<br>(0.00)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-0.911
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1626,10 +1604,6 @@ US code \[FL\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.027</strong>
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
 </td>
 </tr>
 <tr>
@@ -1650,10 +1624,6 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.161
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1672,10 +1642,6 @@ US code \[NY\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.011</strong>
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
 </td>
 </tr>
 <tr>
@@ -1696,10 +1662,6 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.019</strong>
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1719,33 +1681,6 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.552
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-Year
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-1483.90<br>(581.48)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-<strong>0.011</strong>
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
@@ -1759,9 +1694,6 @@ Observations
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
 320
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-696
 </td>
 </tr>
 <tr>
@@ -1777,9 +1709,6 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 0.122 / 0.105
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.009 / 0.007
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
@@ -1794,11 +1723,16 @@ log-Likelihood
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 -3717.984
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8096.948
-</td>
 </tr>
 </table>
+
+We will do the the same for number of wildfires
+
+-   lm_CA2: only in California
+
+-   lm_big6_2: only the big 6
+
+-   lm_all2: all of the states
 
 ``` r
 lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
@@ -1807,11 +1741,9 @@ lm_big6_2<- lm(data = fire_full[full_6,],
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
-lm_acr_time2<- lm(data = fire_full,
-             Average_Wage~fires_Num+Year )
 
-sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T,
-                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2, show.ci= F,show.loglik= T,
+                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6"))
 ```
 
 <table style="border-collapse:collapse; border:none;">
@@ -1827,9 +1759,6 @@ lm all
 </th>
 <th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
 lm big6
-</th>
-<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">
-lm_acr time
 </th>
 </tr>
 <tr>
@@ -1852,12 +1781,6 @@ p
 Estimates
 </td>
 <td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col7">
-p
-</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col8">
-Estimates
-</td>
-<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  col9">
 p
 </td>
 </tr>
@@ -1883,12 +1806,6 @@ p
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
--2976171.12<br>(1170799.41)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-<strong>0.011</strong>
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1912,12 +1829,6 @@ fires Num
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.373
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-0.28<br>(0.32)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-0.382
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1936,10 +1847,6 @@ US code \[FL\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.039</strong>
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
 </td>
 </tr>
 <tr>
@@ -1960,10 +1867,6 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.645
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -1982,10 +1885,6 @@ US code \[NY\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.996
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
 </td>
 </tr>
 <tr>
@@ -2006,10 +1905,6 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.005</strong>
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
@@ -2029,33 +1924,6 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.235
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-Year
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col8">
-1506.41<br>(580.55)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col9">
-<strong>0.010</strong>
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">
@@ -2069,9 +1937,6 @@ Observations
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
 320
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-696
 </td>
 </tr>
 <tr>
@@ -2087,9 +1952,6 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 0.123 / 0.106
 </td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.010 / 0.008
-</td>
 </tr>
 <tr>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">
@@ -2103,9 +1965,6 @@ log-Likelihood
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 -3717.844
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8096.569
 </td>
 </tr>
 </table>

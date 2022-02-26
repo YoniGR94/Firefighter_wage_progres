@@ -321,7 +321,7 @@ Clearly, there is no positive effect of burned Acres on average wages, and there
 
 - lm_comb : year and state effect
 
-this section is a little bit long, only due to the 52 states.
+This section is a little bit long, only due to the 52 states.
 
 ```{r Models, cache=TRUE, max.height='30px'}
 lm_year<- lm(data= df_fire, Average_Wage~ Year)
@@ -339,7 +339,7 @@ sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
 
 We see significant effect of the year.
 
-finaly, now we will see the effect on the wage using the burned acres 
+Finally, now we will see the effect on the wage using the burned acres in some models 
 
 - lm_CA: only in California
 
@@ -354,12 +354,18 @@ lm_big6<- lm(data = fire_full[full_6,],
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
-lm_acr_time<- lm(data = fire_full,
-             Average_Wage~Acres_burned+Year )
 
-sjPlot::tab_model(lm_CA,lm_all,lm_big6,lm_acr_time, show.ci= F,show.loglik= T,
-                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA,lm_all,lm_big6, show.ci= F,show.loglik= T,
+                  collapse.se = T,dv.labels = c("lm CA","lm all","lm big6"))
 ```
+
+We will do the the same for number of wildfires
+
+- lm_CA2: only in California
+
+- lm_big6_2: only the big 6
+
+- lm_all2: all of the states
 
 ```{r by num model, cache=TRUE}
 lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
@@ -368,11 +374,9 @@ lm_big6_2<- lm(data = fire_full[full_6,],
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
-lm_acr_time2<- lm(data = fire_full,
-             Average_Wage~fires_Num+Year )
 
-sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2,lm_acr_time2, show.ci= F,show.loglik= T,
-                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6", "lm_acr time"))
+sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2, show.ci= F,show.loglik= T,
+                  collapse.se = T, dv.labels = c("lm CA","lm all","lm big6"))
 ```
 
 After all the analyzing, we got to the result and now we can see, that according to our data, ***there is no effect of the burned arced on the salary of firefighters, nor there is of the number of wildfires on the salary***.
