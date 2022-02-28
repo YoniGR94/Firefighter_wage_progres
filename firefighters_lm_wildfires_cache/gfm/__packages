@@ -13,3 +13,9 @@ viridis
 hrbrthemes
 ggpp
 ggpmisc
+tidyverse
+tibble
+readr
+purrr
+stringr
+forcats

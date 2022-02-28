@@ -43,10 +43,9 @@ so let’s get started with the libraries:
 ``` r
 library(easypackages)
 #tools
-libraries('httr','jsonlite','XML')
-libraries('dplyr','tidyr')
+libraries('tidyverse','XML',"httr",'jsonlite')
 #visuals
-libraries('ggplot2','ggpubr','knitr')
+libraries('ggpubr','knitr')
 libraries('ggridges','viridis','hrbrthemes')
 ```
 
@@ -186,12 +185,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|     State      | Year | fires_Num | Acres_burned | US_code |                             PUMA                             | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:--------------:|:----:|:---------:|:------------:|:-------:|:------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-|    New York    | 2015 |    186    |     3844     |   NY    |               Oyster Bay Town (South) PUMA, NY               |   99569.52   |      16890.08      |  11.51   |
-| North Carolina | 2014 |   4625    |    15601     |   NC    |                  Rocky Mount City PUMA, NC                   |   24321.23   |      25449.66      |  10.10   |
-|  North Dakota  | 2014 |    567    |     4069     |   ND    |                     Minot City PUMA, ND                      |   25617.06   |      12593.30      |  10.15   |
-| Massachusetts  | 2018 |    320    |     210      |   MA    | Hyde Park, Jamaica Plain, Roslindale & West Roxbury PUMA, MA |  104224.75   |      16281.14      |  11.55   |
+|   State    | Year | fires_Num | Acres_burned | US_code |                                 PUMA                                  | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:---------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
+|   Oregon   | 2014 |   3087    |    984629    |   OR    |              Tigard, Tualatin & Sherwood Cities PUMA, OR              |   69198.21   |      30464.47      |  11.14   |
+|  New York  | 2017 |    57     |     191      |   NY    |                      Chautauqua County PUMA, NY                       |   55595.95   |      20445.13      |  10.93   |
+| California | 2014 |   7865    |    555044    |   CA    | Tulare County (Outside Visalia, Tulare & Porterville Cities) PUMA, CA |   29609.08   |      42841.33      |  10.30   |
+|  New York  | 2014 |    94     |     582      |   NY    |  Orangetown, Clarkstown (South) & Ramapo (Southeast) Towns PUMA, NY   |   74362.81   |      37548.03      |  11.22   |
 
 # Overlooking the Data
 
@@ -278,15 +277,14 @@ fire_full %>%
 ``` r
 fire_full[full_6,] %>%
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005) +
-  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95) +
-  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage") +ylab(" ")+
-  theme_ipsum() +scale_x_continuous(labels=scales::comma)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005)+
+  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
+  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
+  theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
       legend.position="none",
       panel.spacing = unit(0.1, "lines"),
-      strip.text.x = element_text(size = 6)
-    )
+      strip.text.x = element_text(size = 6) )
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/histogram-2.png)<!-- -->

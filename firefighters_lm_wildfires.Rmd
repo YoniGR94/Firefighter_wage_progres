@@ -39,12 +39,10 @@ so let's get started with the libraries:
 ```{r libraries, warning=FALSE, message=FALSE}
 library(easypackages)
 #tools
-libraries('httr','jsonlite','XML')
-libraries('dplyr','tidyr')
+libraries('tidyverse','XML',"httr",'jsonlite')
 #visuals
-libraries('ggplot2','ggpubr','knitr')
+libraries('ggpubr','knitr')
 libraries('ggridges','viridis','hrbrthemes')
-
 ```
 ```{r, include=FALSE}
 options(width = 60)
@@ -257,15 +255,14 @@ fire_full %>%
 
 fire_full[full_6,] %>%
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005) +
-  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95) +
-  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage") +ylab(" ")+
-  theme_ipsum() +scale_x_continuous(labels=scales::comma)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005)+
+  scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
+  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
+  theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
       legend.position="none",
       panel.spacing = unit(0.1, "lines"),
-      strip.text.x = element_text(size = 6)
-    )
+      strip.text.x = element_text(size = 6) )
 ```
 
 we see even top 6 reported states are nit homogenize group.
@@ -274,13 +271,16 @@ And what about time effect? here we can see
 
 ```{r time vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
 fire_full %>%
-  ggplot(aes(x= factor(Year), y= Average_Wage))+
-  geom_boxplot(outlier.colour="24e2ff", outlier.shape=4,
-               outlier.size=1, fill='#24e2ff', color="black")+
-  geom_hline(yintercept= mu_fire, linetype="dashed",
-             color = "black", size=0.5)+
-  labs(title = "Avarage Wage by Year", xlab= "Year")+
-  xlab("Year")+ylab("Wage")+theme_bw()+ scale_y_continuous(labels= scales::comma)
+  ggplot(aes(y= factor(Year), x= Average_Wage, fill = ..x..)) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
+                               quantile_lines = TRUE, quantiles = 2)+
+  scale_fill_viridis(name = "Wage", option = "F", alpha = 0.95)+
+  labs(title = 'Avarage Wage by Year')+ xlab("Year") +ylab(" ")+
+  theme_tinyhand() +scale_x_continuous(labels=scales::comma,limits =c(0,200000) )+
+    theme(
+      legend.position="none",
+      panel.spacing = unit(0.1, "lines"),
+      strip.text.x = element_text(size = 6) )
 
 fire_full[full_6,] %>%
   ggplot(aes(y= Average_Wage,x= Year,colour= State))+
@@ -296,15 +296,15 @@ Here we will try to see whether there is effect of number of acres burned to ave
 ```{r AB vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
 A<- fire_full %>%
   ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
-  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
+  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
   labs(title = "Acres Effect on Wage State of All")+xlab("Acres burned")+
-  scale_x_continuous(labels = scales::comma)
+  scale_x_continuous(labels = scales::comma, limits = c(0,2500000))
 
 B<- fire_full[full_6,] %>%
   ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
-  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+xlim(0,3500000)+
+  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
   labs(title= "Acres Effect on Wage State of Big 6",caption= "red: lm model, blue: loess model")+
-  xlab("Acres burned")+ scale_x_continuous(labels = scales::comma)
+  xlab("Acres burned")+ scale_x_continuous(labels = scales::comma, limits = c(0,2500000))
 
 ggarrange(A,B, ncol = 1, nrow = 2)
 ```
