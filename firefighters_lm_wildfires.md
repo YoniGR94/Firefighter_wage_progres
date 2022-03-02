@@ -185,12 +185,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|     State      | Year | fires_Num | Acres_burned | US_code |                         PUMA                         | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:--------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------:|:------------:|:------------------:|:--------:|
-|     Texas      | 2016 |   9300    |    356680    |   TX    |      Grayson, Cooke & Fannin Counties PUMA, TX       |   57246.63   |      16586.85      |  10.96   |
-|    New York    | 2019 |    79     |     221      |   NY    |         Hempstead Town (Northwest) PUMA, NY          |   95118.04   |      21095.60      |  11.46   |
-|    New York    | 2015 |    186    |     3844     |   NY    | Port Richmond, Stapleton & Mariner’s Harbor PUMA, NY |  108889.90   |      25168.34      |  11.60   |
-| South Carolina | 2019 |    992    |     5939     |   SC    |            North Charleston City PUMA, SC            |   32280.45   |      11814.32      |  10.38   |
+|   State    | Year | fires_Num | Acres_burned | US_code |                                PUMA                                 | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:-------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
+| California | 2015 |   8745    |    893362    |   CA    |                     Santa Clarita City PUMA, CA                     |  130527.98   |      44665.42      |  11.78   |
+|  Maryland  | 2017 |    108    |     2178     |   MD    | Queen Anne’s, Talbot, Caroline, Dorchester & Kent Counties PUMA, MD |   71546.51   |      16044.88      |  11.18   |
+|  Michigan  | 2014 |    268    |     716      |   MI    |                   Downriver Area (North) PUMA, MI                   |   68367.27   |      15804.72      |  11.13   |
+| California | 2018 |   8054    |   1823153    |   CA    |          Windsor Town, Healdsburg & Sonoma Cities PUMA, CA          |  133222.26   |      45096.67      |  11.80   |
 
 ## Overlooking the Data
 
@@ -277,7 +277,8 @@ fire_full %>%
 ``` r
 fire_full[full_6,] %>%
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
+                               quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
   labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
@@ -289,15 +290,14 @@ fire_full[full_6,] %>%
 
 ![](firefighters_lm_wildfires_files/figure-gfm/histogram-2.png)<!-- -->
 
-we see even top 6 reported states are nit homogenize group.
+We see even top 6 reported states are nit homogenize group.
 
 And what about time effect? here we can see
 
 ![](firefighters_lm_wildfires_files/figure-gfm/time%20vis-1.png)<!-- -->![](firefighters_lm_wildfires_files/figure-gfm/time%20vis-2.png)<!-- -->
 
-Although there is no visually clear time effect by year, there are some
-trends. Note that it is might due to different reported stations each
-year.
+Although visually the effect of time is minor, there are some trends.
+Note that it is might due to different reported stations each year.
 
 Here we will try to see whether there is effect of number of acres
 burned to average wage. surprisingly, there is none.

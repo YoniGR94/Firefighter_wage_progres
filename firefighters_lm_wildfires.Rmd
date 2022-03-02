@@ -2,8 +2,7 @@
 title: "Firefighter"
 author: "Yoni"
 date: "Feb 2022"
-output: github_document:
-  toc: true
+output: github_document
 always_allow_html: true
 ---
 
@@ -40,7 +39,7 @@ so let's get started with the libraries:
 ```{r libraries, warning=FALSE, message=FALSE}
 library(easypackages)
 #tools
-libraries('tidyverse','XML',"httr",'jsonlite', 'yaml')
+libraries('tidyverse','XML',"httr",'jsonlite')
 #visuals
 libraries('ggpubr','knitr')
 libraries('ggridges','viridis','hrbrthemes')
@@ -243,7 +242,8 @@ fire_full %>%
 
 fire_full[full_6,] %>%
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
+                               quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
   labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
@@ -253,7 +253,7 @@ fire_full[full_6,] %>%
       strip.text.x = element_text(size = 6) )
 ```
 
-we see even top 6 reported states are nit homogenize group.
+We see even top 6 reported states are nit homogenize group.
 
 And what about time effect? here we can see 
 
@@ -277,7 +277,7 @@ fire_full[full_6,] %>%
   theme_dark()+ scale_y_continuous(labels= scales::comma)
 ```
 
-Although there is no visually clear time effect by year, there are some trends. Note that it is might due to different reported stations each year.
+Although visually the effect of time is minor, there are some trends. Note that it is might due to different reported stations each year.
 
 Here we will try to see whether there is effect of number of acres burned to average wage. surprisingly, there is none.
 
