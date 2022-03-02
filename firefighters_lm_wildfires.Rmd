@@ -2,11 +2,12 @@
 title: "Firefighter"
 author: "Yoni"
 date: "Feb 2022"
-output: github_document
+output: github_document:
+  toc: true
 always_allow_html: true
 ---
 
-# Intro
+## Intro
 
 The goal of this portfolio is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
 
@@ -34,31 +35,18 @@ The method is using data from the API fo [Data USA](https://datausa.io/profile/s
 
 so let's get started with the libraries:
 
-# Set data
+## Set data
 
 ```{r libraries, warning=FALSE, message=FALSE}
 library(easypackages)
 #tools
-libraries('tidyverse','XML',"httr",'jsonlite')
+libraries('tidyverse','XML',"httr",'jsonlite', 'yaml')
 #visuals
 libraries('ggpubr','knitr')
 libraries('ggridges','viridis','hrbrthemes')
 ```
-```{r, include=FALSE}
-options(width = 60)
-local({
-  hook_output <- knitr::knit_hooks$get('output')
-  knitr::knit_hooks$set(output = function(x, options) {
-    if (!is.null(options$max.height)) options$attr.output <- c(
-      options$attr.output,
-      sprintf('style="max-height: %s;"', options$max.height)
-    )
-    hook_output(x, options)
-  })
-})
-```
 
-## Wage data importing
+### Wage data importing
 
 This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefighters)
 
@@ -187,7 +175,7 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-# Overlooking the Data
+## Overlooking the Data
 
 We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
@@ -311,7 +299,7 @@ ggarrange(A,B, ncol = 1, nrow = 2)
 
 Clearly, there is no positive effect of burned Acres on average wages, and there might be even negative correlation. even though, I do not believe this is causation.
 
-# Models
+## Models
 
 3 models presented here of predicting the average wage
 
@@ -381,7 +369,7 @@ sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2, show.ci= F,show.loglik= T,
 
 After all the analyzing, we got to the result and now we can see, that according to our data, ***there is no effect of the burned arced on the salary of firefighters, nor there is of the number of wildfires on the salary***.
 
-# Discussion
+## Discussion
 
 As far as we can see with the data above, there is no short term correlation between wildfires and firefighters wage. Some explanation to this could be:
 

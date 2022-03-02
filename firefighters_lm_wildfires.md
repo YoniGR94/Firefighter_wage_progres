@@ -3,7 +3,7 @@ Firefighter
 Yoni
 Feb 2022
 
-# Intro
+## Intro
 
 The goal of this portfolio is to try to find up weather firefighters
 gain more wage for more work, in general. As a result of the global
@@ -38,7 +38,7 @@ too small, some information can be found.
 
 so let’s get started with the libraries:
 
-# Set data
+## Set data
 
 ``` r
 library(easypackages)
@@ -49,7 +49,7 @@ libraries('ggpubr','knitr')
 libraries('ggridges','viridis','hrbrthemes')
 ```
 
-## Wage data importing
+### Wage data importing
 
 This is firemen’s salary from [Data
 USA](https://datausa.io/profile/soc/firefighters)
@@ -185,14 +185,14 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |                                 PUMA                                  | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:---------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-|   Oregon   | 2014 |   3087    |    984629    |   OR    |              Tigard, Tualatin & Sherwood Cities PUMA, OR              |   69198.21   |      30464.47      |  11.14   |
-|  New York  | 2017 |    57     |     191      |   NY    |                      Chautauqua County PUMA, NY                       |   55595.95   |      20445.13      |  10.93   |
-| California | 2014 |   7865    |    555044    |   CA    | Tulare County (Outside Visalia, Tulare & Porterville Cities) PUMA, CA |   29609.08   |      42841.33      |  10.30   |
-|  New York  | 2014 |    94     |     582      |   NY    |  Orangetown, Clarkstown (South) & Ramapo (Southeast) Towns PUMA, NY   |   74362.81   |      37548.03      |  11.22   |
+|     State      | Year | fires_Num | Acres_burned | US_code |                         PUMA                         | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:--------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------------------:|:------------:|:------------------:|:--------:|
+|     Texas      | 2016 |   9300    |    356680    |   TX    |      Grayson, Cooke & Fannin Counties PUMA, TX       |   57246.63   |      16586.85      |  10.96   |
+|    New York    | 2019 |    79     |     221      |   NY    |         Hempstead Town (Northwest) PUMA, NY          |   95118.04   |      21095.60      |  11.46   |
+|    New York    | 2015 |    186    |     3844     |   NY    | Port Richmond, Stapleton & Mariner’s Harbor PUMA, NY |  108889.90   |      25168.34      |  11.60   |
+| South Carolina | 2019 |    992    |     5939     |   SC    |            North Charleston City PUMA, SC            |   32280.45   |      11814.32      |  10.38   |
 
-# Overlooking the Data
+## Overlooking the Data
 
 We saw that the number of reports by country is very Varied. Therefore,
 in some analyzing I compare the result to the top 6 reported states. we
@@ -308,7 +308,7 @@ Clearly, there is no positive effect of burned Acres on average wages,
 and there might be even negative correlation. even though, I do not
 believe this is causation.
 
-# Models
+## Models
 
 3 models presented here of predicting the average wage
 
@@ -1972,7 +1972,7 @@ according to our data, ***there is no effect of the burned arced on the
 salary of firefighters, nor there is of the number of wildfires on the
 salary***.
 
-# Discussion
+## Discussion
 
 As far as we can see with the data above, there is no short term
 correlation between wildfires and firefighters wage. Some explanation to
