@@ -60,7 +60,7 @@ wage_rl<-
 get_fire<- GET(wage_rl)
 my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
 my_Json<- fromJSON(my_content)
-open_fire <- glimpse(my_Json )
+open_fire <- glimpse(my_Json)
 ```
 
 ``` r
@@ -71,11 +71,16 @@ df_fire<- open_fire$data %>%
   rename('Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
   mutate(log_Wage= log(Average_Wage) )
 
-AB<- function(vec) #function to make "Dothan City PUMA, AL" to "AL"
-  {split<- rev(strsplit(vec, ", ")[[1]] )
-  return(as.vector (split[1]) ) }
+#find how many ", " we need to split
+max_split<- max(df_fire$PUMA  %>% map_int(~length(str_split(.x, ", ")[[1]]) ) )
+max_split
+```
 
-df_fire$US_code<- as.character(unlist (lapply(df_fire$PUMA, AB)) )
+    ## [1] 7
+
+``` r
+df_fire<- df_fire%>%
+  separate(PUMA, remove = F,c(rep(NA,max_split), "US_code"), sep = ", ", fill = "left")
 ```
 
 Here you can see the data divided by year and countries
@@ -92,7 +97,7 @@ text(bp,pres_yir-6,labels = pres_yir)}
 
 ``` r
 df_fire<- df_fire %>%
-  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing
+  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing "TX (79500US4805905)"
   
 {bp<- barplot(sort(table(df_fire$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
 grid(nx= NA, ny= NULL, col = "black")}
@@ -185,12 +190,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |                                PUMA                                 | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:-------------------------------------------------------------------:|:------------:|:------------------:|:--------:|
-| California | 2015 |   8745    |    893362    |   CA    |                     Santa Clarita City PUMA, CA                     |  130527.98   |      44665.42      |  11.78   |
-|  Maryland  | 2017 |    108    |     2178     |   MD    | Queen Anne’s, Talbot, Caroline, Dorchester & Kent Counties PUMA, MD |   71546.51   |      16044.88      |  11.18   |
-|  Michigan  | 2014 |    268    |     716      |   MI    |                   Downriver Area (North) PUMA, MI                   |   68367.27   |      15804.72      |  11.13   |
-| California | 2018 |   8054    |   1823153    |   CA    |          Windsor Town, Healdsburg & Sonoma Cities PUMA, CA          |  133222.26   |      45096.67      |  11.80   |
+|     State     | Year | fires_Num | Acres_burned | US_code |                   PUMA                   | Average_Wage | Mean Wage Appx MOE | log_Wage |
+|:-------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------:|:------------:|:------------------:|:--------:|
+|    Alabama    | 2016 |   3923    |    59030     |   AL    | Huntsville City (Far Southeast) PUMA, AL |   37475.11   |      13393.52      |  10.53   |
+|     Texas     | 2014 |   9677    |    131138    |   TX    |          Ellis County PUMA, TX           |   49755.27   |      37242.23      |  10.81   |
+| New Hampshire | 2019 |    16     |      25      |   NH    |     Grafton & Coos Counties PUMA, NH     |   72866.06   |      60508.06      |  11.20   |
+|    Florida    | 2017 |   3280    |    298831    |   FL    |  Glades & Western Communities PUMA, FL   |   52555.29   |      33671.17      |  10.87   |
 
 ## Overlooking the Data
 
@@ -1987,7 +1992,9 @@ this could be:
 -   Each state firm has different approach
 
 And maybe simply there is no correlation. As far as I learn from the
-data, the *H*<sub>0</sub> of no correlation was not rejected.
+data, the
+![H_0](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;H_0 "H_0")
+of no correlation was not rejected.
 
 On the other hand, there is significant effect of the year of over
 1,400$ per year, as we can see here:

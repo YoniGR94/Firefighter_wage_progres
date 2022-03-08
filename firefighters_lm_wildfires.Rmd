@@ -55,7 +55,7 @@ wage_rl<-
 get_fire<- GET(wage_rl)
 my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
 my_Json<- fromJSON(my_content)
-open_fire <- glimpse(my_Json )
+open_fire <- glimpse(my_Json)
 ```
 
 ```{r data usa api 2}
@@ -66,11 +66,12 @@ df_fire<- open_fire$data %>%
   rename('Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
   mutate(log_Wage= log(Average_Wage) )
 
-AB<- function(vec) #function to make "Dothan City PUMA, AL" to "AL"
-  {split<- rev(strsplit(vec, ", ")[[1]] )
-  return(as.vector (split[1]) ) }
+#find how many ", " we need to split
+max_split<- max(df_fire$PUMA  %>% map_int(~length(str_split(.x, ", ")[[1]]) ) )
+max_split
 
-df_fire$US_code<- as.character(unlist (lapply(df_fire$PUMA, AB)) )
+df_fire<- df_fire%>%
+  separate(PUMA, remove = F,c(rep(NA,max_split), "US_code"), sep = ", ", fill = "left")
 ```
 
 Here you can see the data divided by year and countries
@@ -83,7 +84,7 @@ pres_yir<- table(df_fire$Year) #add to bar plot
 text(bp,pres_yir-6,labels = pres_yir)}
 
 df_fire<- df_fire %>%
-  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing
+  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing "TX (79500US4805905)"
   
 {bp<- barplot(sort(table(df_fire$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
 grid(nx= NA, ny= NULL, col = "black")}
