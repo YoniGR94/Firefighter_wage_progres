@@ -49,29 +49,27 @@ libraries('ggridges','viridis','hrbrthemes')
 
 This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefighters)
 
-```{r data usa api, message=FALSE, results='hide', warning=FALSE}
+```{r data usa api, message=FALSE, warning=FALSE}
+library(readxl)
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
-get_fire<- GET(wage_rl)
-my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
-my_Json<- fromJSON(my_content)
-open_fire <- glimpse(my_Json)
+
+get_fire<- GET(wage_rl) %>%
+  content(as= 'text', encoding = "UTF-8") %>%
+  fromJSON(.) %>%
+  glimpse(.)
 ```
+Now we will organize it a little bit
 
 ```{r data usa api 2}
-df_fire<- open_fire$data %>%
+df_fire<- get_fire$data %>%
   select(c(2,4:7)) %>%
-  mutate(Year= as.numeric(Year)) %>%
-  rename(Average_Wage= 'Average Wage') %>%
-  rename('Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
-  mutate(log_Wage= log(Average_Wage) )
-
-#find how many ", " we need to split
-max_split<- max(df_fire$PUMA  %>% map_int(~length(str_split(.x, ", ")[[1]]) ) )
-max_split
-
-df_fire<- df_fire%>%
-  separate(PUMA, remove = F,c(rep(NA,max_split), "US_code"), sep = ", ", fill = "left")
+  rename(Average_Wage= 'Average Wage',
+         'Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
+  mutate(Year= as.numeric(Year),
+         log_Wage= log(Average_Wage),
+         US_code= map_chr(PUMA,
+                                  function(x) { nth(str_split(x, ",")[[1]],-1) } ))
 ```
 
 Here you can see the data divided by year and countries
@@ -95,21 +93,18 @@ grid(nx= NA, ny= NULL, col = "black")}
 We are using Wikidata to import [key](https://www.wikidata.org/wiki/Wikidata:Lists/US_states) from 2- letters to state name.
 
 ```{r wiki, warning=FALSE}
-wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')
-wiki_contnt<- content(wiki_get, "text")
-wiki_state<- readHTMLTable(wiki_contnt, trim=T, as.data.frame=T, header= T)
-wiki_state<-bind_rows(wiki_state)
-
-wiki_state<- wiki_state[-(1:2),] %>%
-  select(V1:V3) %>%
-  drop_na(V2) %>%
+wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states') %>%
+  content("text") %>%
+  readHTMLTable(trim=T, as.data.frame=T, header= T, skip.rows = 1)
+  
+wiki_state<- wiki_get[[1]] %>%
+  select(1:3) %>%
+  drop_na(abbr) %>%
   `colnames<-`(c("State","US_code","Instance_of"))
 
 kable(wiki_state[1:4,1:2])
 
 df_fire <- merge(df_fire,wiki_state,by="US_code")
-rm(wiki_contnt,wiki_state)
-rm(my_content, my_Json, open_fire)
 ```
 
 ```{r script delete 2018, include=FALSE, eval=FALSE}
@@ -126,6 +121,7 @@ the_df18<- the_df18[!duplicated(the_df18[,'State']),] #delete duplicate states
 the_df18$Year<- 2018 #year parameter for future combine
 ---
 ```
+
 ### Download Automation
 
 The data been taken from the [Insurance Information Institute](https://www.iii.org/table-archive/23284)
@@ -133,18 +129,20 @@ The data been taken from the [Insurance Information Institute](https://www.iii.o
 You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-statistics-wildfires'), but the imported data from Data USA reach only 2019.
 
 ```{r firefield outomation}
+#לתקן פונקציה ולהתאים לטבלה 16ת18
 call_fire<- function(x,year, m_TF= T)
   {
-  my_get<- GET(x)
-  my_content<- content(my_get, as= 'text', encoding = "UTF-8")
-  pre_df<- readHTMLTable(my_content, trim=T, as.data.frame=T, header=m_TF)
+  my_get<- GET(x) %>%
+    content(as= 'text', encoding = "UTF-8") %>%
+    readHTMLTable(trim=T, as.data.frame=T, header=m_TF, skip.rows =  1:3)
   if(m_TF)
-  {bind_df<- bind_rows(pre_df)[4:6]} else {bind_df<-pre_df[[3]]}
-  names(bind_df)<- c('State','fires_Num','Acres_burned')
-  the_df<- bind_df[!is.na(bind_df$State),]
-  the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
-  the_df$Year<- year #year parameter for future combine
-  return(the_df)
+  {my_get<- bind_rows(my_get)[4:6]} else {my_get<-my_get[[3]]}
+  my_get<- my_get %>%
+  rename(fires_Num= 'Number of fires',Acres_burned= 'Number of acres burned') %>% 
+  filter(!is.na(State)) %>%
+  #the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
+  mutate(Year= year) #year parameter for combining
+  return(my_get)
   }
 ```
 
@@ -160,8 +158,9 @@ no_coma<- function(x) #from character"12,345" to numeric 12345
   {as.numeric(gsub(",","", x))}
 
 firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
-  mutate(fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
-  mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
+  mutate(across(c(fires_Num,Acres_burned), ~map_chr(x., ifelse(.x== "(1)", 0, .x))))
+  #fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
+  #mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
   mutate(Acres_burned= no_coma(Acres_burned))%>%
   mutate(fires_Num= no_coma(fires_Num))
 # merge & head
