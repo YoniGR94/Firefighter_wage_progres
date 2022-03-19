@@ -151,10 +151,10 @@ kable(df_fire[sample(1:703,4),c(1,2,5)])
 
 |     | State      | US_code | Year |
 |:----|:-----------|:--------|-----:|
-| 121 | California | CA      | 2016 |
-| 511 | Ohio       | OH      | 2014 |
-| 596 | Texas      | TX      | 2018 |
-| 535 | Oregon     | OR      | 2016 |
+| 179 | Florida    | FL      | 2019 |
+| 608 | Texas      | TX      | 2016 |
+| 309 | Illinois   | IL      | 2014 |
+| 143 | California | CA      | 2014 |
 
 ``` r
 #df_fire <- merge(df_wage,wiki_state,by="US_code")
@@ -235,12 +235,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|     State      | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                             PUMA                              | Average_Wage | log_Wage |
-|:--------------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-------------------------------------------------------------:|:------------:|:--------:|
-|     Texas      | 2015 |   9272    |    184418    |   TX    | state of the United States | Rockwall, Greenville & Dallas (Far Northeast) Cities PUMA, TX |   35027.92   |  10.46   |
-| South Carolina | 2015 |    976    |     3800     |   SC    | state of the United States |                North Charleston City PUMA, SC                 |   32383.39   |  10.39   |
-|    Oklahoma    | 2016 |   1938    |    767780    |   OK    | state of the United States |                      Enid City PUMA, OK                       |   31649.78   |  10.36   |
-|    Georgia     | 2019 |   3158    |    12407     |   GA    | state of the United States |                   Paulding County PUMA, GA                    |   88041.16   |  11.39   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                        PUMA                        | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:--------------------------------------------------:|:------------:|:--------:|
+|  Florida   | 2019 |   2121    |    122500    |   FL    | state of the United States | Walton, Washington, Holmes & Bay Counties PUMA, FL |   64637.05   |  11.08   |
+|  Georgia   | 2016 |   5086    |    52119     |   GA    | state of the United States |              Forsyth County PUMA, GA               |   38005.98   |  10.55   |
+| Washington | 2018 |   1743    |    438834    |   WA    | state of the United States |    Skagit, Island & San Juan Counties PUMA, WA     |   61646.64   |  11.03   |
+|   Idaho    | 2018 |   1132    |    604481    |   ID    | state of the United States |   Lewiston City & Nez Perce Reservation PUMA, ID   |   36081.84   |  10.49   |
 
 ## Overlooking the Data
 
@@ -268,16 +268,18 @@ data we see that California and Alaska suffer the most from wildfires,
 and also has the biggest change in wildfires
 
 ``` r
-count_fire<-fire_full %>%   #sum by country
-  group_by(State) %>%
-  summarise(much= sum(fires_Num))
-fire_min <- count_fire[order(count_fire$much,decreasing = T),]
-min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
+big_2 <- unlist(fire_full %>%
+                  count(State,wt= Acres_burned, sort = T, name = 'mean_Acres') %>% 
+                  top_n(2, mean_Acres) %>%
+                  select(1))
 
-big_2 <- as.vector(big_n%>%  top_n(6, size) %>% select(1))
-full_2<- fire_full$State%in% c("California", "Alaska")
+as.vector(big_2)
+```
 
-fire_full [full_2,]%>%
+    ## [1] "California" "Alaska"
+
+``` r
+fire_full %>% filter(State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
@@ -287,7 +289,7 @@ fire_full [full_2,]%>%
 ![](firefighters_lm_wildfires_files/figure-gfm/fire%20progress-1.png)<!-- -->
 
 ``` r
-fire_full [min_fire_gg,]%>%
+fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+

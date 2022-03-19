@@ -219,22 +219,20 @@ t.fire
 Here are the progress of acres burned in the us. from a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
 
 ```{r fire progress, warning=FALSE, message=FALSE}
-count_fire<-fire_full %>%   #sum by country
-  group_by(State) %>%
-  summarise(much= sum(fires_Num))
-fire_min <- count_fire[order(count_fire$much,decreasing = T),]
-min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
+big_2 <- unlist(fire_full %>%
+                  count(State,wt= Acres_burned, sort = T, name = 'mean_Acres') %>% 
+                  top_n(2, mean_Acres) %>%
+                  select(1))
 
-big_2 <- as.vector(big_n%>%  top_n(6, size) %>% select(1))
-full_2<- fire_full$State%in% c("California", "Alaska")
+as.vector(big_2)
 
-fire_full [full_2,]%>%
+fire_full %>% filter(State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
   theme_dark()+  scale_y_continuous(labels = scales::comma)
 
-fire_full [min_fire_gg,]%>%
+fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
