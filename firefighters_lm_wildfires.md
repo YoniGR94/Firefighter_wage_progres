@@ -55,40 +55,64 @@ This is firemen’s salary from [Data
 USA](https://datausa.io/profile/soc/firefighters)
 
 ``` r
+library(readxl)
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
-get_fire<- GET(wage_rl)
-my_content<- content(get_fire, as= 'text', encoding = "UTF-8")
-my_Json<- fromJSON(my_content)
-open_fire <- glimpse(my_Json)
+
+get_fire<- GET(wage_rl) %>%
+  content(as= 'text', encoding = "UTF-8") %>%
+  fromJSON(.) %>%
+  glimpse(.)
 ```
 
+    ## List of 2
+    ##  $ data  :'data.frame':  703 obs. of  11 variables:
+    ##   ..$ ID PUMA              : chr [1:703] "79500US0100200" "79500US0100800" "79500US0101100" "79500US0101304" ...
+    ##   ..$ PUMA                 : chr [1:703] "Huntsville City (Far West & Southwest) PUMA, AL" "St. Clair & Blount Counties PUMA, AL" "Calhoun County PUMA, AL" "Trussville, Center Point & Gardendale Cities PUMA, AL" ...
+    ##   ..$ ID Year              : int [1:703] 2019 2019 2019 2019 2019 2019 2019 2019 2019 2019 ...
+    ##   ..$ Year                 : chr [1:703] "2019" "2019" "2019" "2019" ...
+    ##   ..$ Average Wage         : num [1:703] 53303 61310 72722 59759 44737 ...
+    ##   ..$ Average Wage Appx MOE: num [1:703] 7355 14980 20291 20976 29447 ...
+    ##   ..$ Record Count         : int [1:703] 10 7 5 9 5 5 6 10 6 6 ...
+    ##   ..$ Slug PUMA            : chr [1:703] "huntsville-city-far-west-southwest-puma-al" "st-clair-blount-counties-puma-al" "calhoun-county-puma-al" "trussville-center-point-gardendale-cities-puma-al" ...
+    ##   ..$ PUMS Occupation      : chr [1:703] "Firefighters" "Firefighters" "Firefighters" "Firefighters" ...
+    ##   ..$ ID PUMS Occupation   : chr [1:703] "332011" "332011" "332011" "332011" ...
+    ##   ..$ Slug PUMS Occupation : chr [1:703] "firefighters" "firefighters" "firefighters" "firefighters" ...
+    ##  $ source:'data.frame':  1 obs. of  4 variables:
+    ##   ..$ measures     :List of 1
+    ##   .. ..$ : chr [1:3] "Average Wage" "Average Wage Appx MOE" "Record Count"
+    ##   ..$ annotations  :'data.frame':    1 obs. of  8 variables:
+    ##   .. ..$ source_name       : chr "Census Bureau"
+    ##   .. ..$ source_description: chr "The American Community Survey (ACS) Public Use Microdata Sample (PUMS) files are a set of untabulated records a"| __truncated__
+    ##   .. ..$ dataset_name      : chr "ACS PUMS 1-Year Estimate"
+    ##   .. ..$ dataset_link      : chr "https://census.gov/programs-surveys/acs/technical-documentation/pums.html"
+    ##   .. ..$ subtopic          : chr "Demographics"
+    ##   .. ..$ table_id          : chr "PUMS"
+    ##   .. ..$ topic             : chr "Diversity"
+    ##   .. ..$ hidden_measures   : chr "ygbpop RCA,ygopop RCA,ygipop RCA,yocpop RCA,yiopop RCA,ycbpop RCA"
+    ##   ..$ name         : chr "pums_1"
+    ##   ..$ substitutions:List of 1
+    ##   .. ..$ : list()
+
+Now we will organize it a little bit
+
 ``` r
-df_fire<- open_fire$data %>%
+df_wage<- get_fire$data %>%
   select(c(2,4:7)) %>%
-  mutate(Year= as.numeric(Year)) %>%
-  rename(Average_Wage= 'Average Wage') %>%
-  rename('Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
-  mutate(log_Wage= log(Average_Wage) )
-
-#find how many ", " we need to split
-max_split<- max(df_fire$PUMA  %>% map_int(~length(str_split(.x, ", ")[[1]]) ) )
-max_split
-```
-
-    ## [1] 7
-
-``` r
-df_fire<- df_fire%>%
-  separate(PUMA, remove = F,c(rep(NA,max_split), "US_code"), sep = ", ", fill = "left")
+  rename(Average_Wage= 'Average Wage',
+         'Mean_Wage_Appx_MOE' = 'Average Wage Appx MOE') %>%
+  mutate(Year= as.numeric(Year),
+         log_Wage= log(Average_Wage),
+         US_code= map_chr(PUMA,
+                                  function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
 ```
 
 Here you can see the data divided by year and countries
 
 ``` r
-pres_yir<- table(df_fire$Year) #add to bar plot
+pres_yir<- table(df_wage$Year) #add to bar plot
 
-{bp<- barplot(table(df_fire$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
+{bp<- barplot(table(df_wage$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
 #grid(nx= NA, ny= NULL)
 text(bp,pres_yir-6,labels = pres_yir)}
 ```
@@ -96,10 +120,10 @@ text(bp,pres_yir-6,labels = pres_yir)}
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-1.png)<!-- -->
 
 ``` r
-df_fire<- df_fire %>%
-  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing "TX (79500US4805905)"
-  
-{bp<- barplot(sort(table(df_fire$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
+df_wage<- df_wage %>%
+  mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
+
+{bp<- barplot(sort(table(df_wage$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
 grid(nx= NA, ny= NULL, col = "black")}
 ```
 
@@ -112,30 +136,28 @@ We are using Wikidata to import
 letters to state name.
 
 ``` r
-wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')
-wiki_contnt<- content(wiki_get, "text")
-wiki_state<- readHTMLTable(wiki_contnt, trim=T, as.data.frame=T, header= T)
-wiki_state<-bind_rows(wiki_state)
+wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states') %>%
+  content("text") %>%
+  readHTMLTable(trim=T, as.data.frame=T, header= T, skip.rows = 1)
+  
+df_fire<- wiki_get[[1]] %>%
+  select(1:3) %>%
+  drop_na(abbr) %>%
+  `colnames<-`(c("State","US_code","Instance_of")) %>% 
+  right_join(df_wage,by="US_code")
 
-wiki_state<- wiki_state[-(1:2),] %>%
-  select(V1:V3) %>%
-  drop_na(V2) %>%
-  `colnames<-`(c("State","US_code","Instance_of"))
-
-kable(wiki_state[1:4,1:2])
+kable(df_fire[sample(1:703,4),c(1,2,5)])
 ```
 
-| State    | US_code |
-|:---------|:--------|
-| Alaska   | AK      |
-| Alabama  | AL      |
-| Arkansas | AR      |
-| Arizona  | AZ      |
+|     | State      | US_code | Year |
+|:----|:-----------|:--------|-----:|
+| 121 | California | CA      | 2016 |
+| 511 | Ohio       | OH      | 2014 |
+| 596 | Texas      | TX      | 2018 |
+| 535 | Oregon     | OR      | 2016 |
 
 ``` r
-df_fire <- merge(df_fire,wiki_state,by="US_code")
-rm(wiki_contnt,wiki_state)
-rm(my_content, my_Json, open_fire)
+#df_fire <- merge(df_wage,wiki_state,by="US_code")
 ```
 
 ### Download Automation
@@ -150,16 +172,19 @@ but the imported data from Data USA reach only 2019.
 ``` r
 call_fire<- function(x,year, m_TF= T)
   {
-  my_get<- GET(x)
-  my_content<- content(my_get, as= 'text', encoding = "UTF-8")
-  pre_df<- readHTMLTable(my_content, trim=T, as.data.frame=T, header=m_TF)
+  my_get<- GET(x) %>%
+    content(as= 'text', encoding = "UTF-8") %>%
+    readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
   if(m_TF)
-  {bind_df<- bind_rows(pre_df)[4:6]} else {bind_df<-pre_df[[3]]}
-  names(bind_df)<- c('State','fires_Num','Acres_burned')
-  the_df<- bind_df[!is.na(bind_df$State),]
-  the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
-  the_df$Year<- year #year parameter for future combine
-  return(the_df)
+  {my_get<- bind_rows(my_get)[4:6]} else
+  {my_get<-my_get[[3]][-1,] %>% 
+    'colnames<-'(my_get[[3]][1,1:3])
+  }
+  my_get<- my_get %>%
+  'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
+  filter(!is.na(State)) %>%
+  mutate(Year= year) #year parameter for combining
+  return(my_get)
   }
 ```
 
@@ -168,21 +193,41 @@ df_14<- call_fire("https://www.iii.org/table-archive/214725/file", 2014)
 df_15<- call_fire("https://www.iii.org/table-archive/218674/file", 2015)
 df_16<- call_fire("https://www.iii.org/table-archive/220226/file", 2016)
 df_17<- call_fire("https://www.iii.org/table-archive/220932/file", 2017)
-df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)[-1,] #bug fixing
+df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)
 df_19<- call_fire("https://www.iii.org/table-archive/222809/file", 2019)
 
-no_coma<- function(x) #from character"12,345" to numeric 12345
-  {as.numeric(gsub(",","", x))}
+firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
+  mutate(across(c(fires_Num,Acres_burned), ~replace(.,.=='(1)', '0')),
+         across(c(fires_Num,Acres_burned), ~parse_number(.)),
+         across(State, ~replace(.,.=='New York ', "New York") ) )%>%
+  filter(!str_detect(State, "United States")) #%>%
+  #left_join(df_fire)#, by= c("State", "Year"))
 
-firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
-  mutate(fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
-  mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
-  mutate(Acres_burned= no_coma(Acres_burned))%>%
-  mutate(fires_Num= no_coma(fires_Num))
 # merge & head
-fire_full<- (merge(firelist, df_fire, by= c("State", "Year"))) %>%
-  select(-c(9,11))
+fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
+  select(-c(9:10))
+#fix NY לתקן
+sort(unique(firelist$State))
 ```
+
+    ##  [1] "Alabama"              "Alaska"               "Arizona"             
+    ##  [4] "Arkansas"             "California"           "Colorado"            
+    ##  [7] "Connecticut"          "Delaware"             "District of Columbia"
+    ## [10] "Florida"              "Georgia"              "Hawaii"              
+    ## [13] "Idaho"                "Illinois"             "Indiana"             
+    ## [16] "Iowa"                 "Kansas"               "Kentucky"            
+    ## [19] "Louisiana"            "Maine"                "Maryland"            
+    ## [22] "Massachusetts"        "Michigan"             "Minnesota"           
+    ## [25] "Mississippi"          "Missouri"             "Montana"             
+    ## [28] "Nebraska"             "Nevada"               "New Hampshire"       
+    ## [31] "New Jersey"           "New Mexico"           "New York"            
+    ## [34] "New York "            "North Carolina"       "North Dakota"        
+    ## [37] "Ohio"                 "Oklahoma"             "Oregon"              
+    ## [40] "Pennsylvania"         "Puerto Rico"          "Rhode Island"        
+    ## [43] "South Carolina"       "South Dakota"         "Tennessee"           
+    ## [46] "Texas"                "Utah"                 "Vermont"             
+    ## [49] "Virginia"             "Washington"           "West Virginia"       
+    ## [52] "Wisconsin"            "Wyoming"
 
 Here are some rows from the data I combined
 
@@ -190,12 +235,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|     State     | Year | fires_Num | Acres_burned | US_code |                   PUMA                   | Average_Wage | Mean Wage Appx MOE | log_Wage |
-|:-------------:|:----:|:---------:|:------------:|:-------:|:----------------------------------------:|:------------:|:------------------:|:--------:|
-|    Alabama    | 2016 |   3923    |    59030     |   AL    | Huntsville City (Far Southeast) PUMA, AL |   37475.11   |      13393.52      |  10.53   |
-|     Texas     | 2014 |   9677    |    131138    |   TX    |          Ellis County PUMA, TX           |   49755.27   |      37242.23      |  10.81   |
-| New Hampshire | 2019 |    16     |      25      |   NH    |     Grafton & Coos Counties PUMA, NH     |   72866.06   |      60508.06      |  11.20   |
-|    Florida    | 2017 |   3280    |    298831    |   FL    |  Glades & Western Communities PUMA, FL   |   52555.29   |      33671.17      |  10.87   |
+|     State      | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                             PUMA                              | Average_Wage | log_Wage |
+|:--------------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-------------------------------------------------------------:|:------------:|:--------:|
+|     Texas      | 2015 |   9272    |    184418    |   TX    | state of the United States | Rockwall, Greenville & Dallas (Far Northeast) Cities PUMA, TX |   35027.92   |  10.46   |
+| South Carolina | 2015 |    976    |     3800     |   SC    | state of the United States |                North Charleston City PUMA, SC                 |   32383.39   |  10.39   |
+|    Oklahoma    | 2016 |   1938    |    767780    |   OK    | state of the United States |                      Enid City PUMA, OK                       |   31649.78   |  10.36   |
+|    Georgia     | 2019 |   3158    |    12407     |   GA    | state of the United States |                   Paulding County PUMA, GA                    |   88041.16   |  11.39   |
 
 ## Overlooking the Data
 
@@ -204,22 +249,19 @@ in some analyzing I compare the result to the top 6 reported states. we
 will see that there is also difference in the mean wage. This difference
 is significant, as we checked it t test.
 
-    ## [1] "California"    "Florida"       "Texas"         "Massachusetts"
-    ## [5] "Washington"    "New York"
-
-    ## [1] "Mean of 62696.5 $ for all states, and 67408.8 $ for the top 6 reported. the difference is 4712.3 $"
+    ## [1] "Mean of 62375.8 $ for all states, and 66461.9 $ for the top 6 reported. the difference is 4086.1 $"
 
     ## 
     ##  Welch Two Sample t-test
     ## 
-    ## data:  fire_full$Average_Wage[full_6] and fire_full$Average_Wage[-full_6]
-    ## t = 4.0351, df = 595.12, p-value = 6.169e-05
+    ## data:  fire_full$Average_Wage[fire_full$big6] and fire_full$Average_Wage[-fire_full$big6]
+    ## t = 1.9506, df = 478.19, p-value = 0.05168
     ## alternative hypothesis: true difference in means is not equal to 0
     ## 95 percent confidence interval:
-    ##   3966.712 11489.494
+    ##   -29.96041 8202.15274
     ## sample estimates:
     ## mean of x mean of y 
-    ##  70298.03  62569.93
+    ##  66461.93  62375.83
 
 Here are the progress of acres burned in the us. from a quick look at da
 data we see that California and Alaska suffer the most from wildfires,
@@ -232,7 +274,7 @@ count_fire<-fire_full %>%   #sum by country
 fire_min <- count_fire[order(count_fire$much,decreasing = T),]
 min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
 
-big_2 <- as.vector(count_state[1:6,1])
+big_2 <- as.vector(big_n%>%  top_n(6, size) %>% select(1))
 full_2<- fire_full$State%in% c("California", "Alaska")
 
 fire_full [full_2,]%>%
@@ -264,7 +306,7 @@ In addition, tehere is boxplot of the big 6 wages.
 
 ``` r
 fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= full_6))+
+  ggplot(aes(x= Average_Wage, fill= big6))+
   scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
   geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
@@ -280,7 +322,7 @@ fire_full %>%
 ![](firefighters_lm_wildfires_files/figure-gfm/histogram-1.png)<!-- -->
 
 ``` r
-fire_full[full_6,] %>%
+fire_full %>% filter(big6) %>% 
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
                                quantile_lines = TRUE, quantiles = 2)+
@@ -334,36 +376,30 @@ lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
 anova(lm_state, lm_comb)
 ```
 
-```
-## Analysis of Variance Table
-## 
-## Model 1: Average_Wage ~ US_code
-## Model 2: Average_Wage ~ Year + US_code
-##   Res.Df        RSS Df  Sum of Sq      F  Pr(>F)   
-## 1    655 3.6485e+11                                
-## 2    654 3.6030e+11  1 4551573266 8.2619 0.00418 **
-## ---
-## Signif. codes:  
-## 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-```
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: Average_Wage ~ US_code
+    ## Model 2: Average_Wage ~ Year + US_code
+    ##   Res.Df        RSS Df  Sum of Sq     F   Pr(>F)   
+    ## 1    654 3.6399e+11                                
+    ## 2    653 3.5966e+11  1 4330285934 7.862 0.005198 **
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 ``` r
 #anova test to State effect
 anova(lm_year , lm_comb)
 ```
 
-```
-## Analysis of Variance Table
-## 
-## Model 1: Average_Wage ~ Year
-## Model 2: Average_Wage ~ Year + US_code
-##   Res.Df        RSS Df  Sum of Sq     F    Pr(>F)    
-## 1    701 5.2518e+11                                  
-## 2    654 3.6030e+11 47 1.6489e+11 6.368 < 2.2e-16 ***
-## ---
-## Signif. codes:  
-## 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-```
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: Average_Wage ~ Year
+    ## Model 2: Average_Wage ~ Year + US_code
+    ##   Res.Df        RSS Df  Sum of Sq      F    Pr(>F)    
+    ## 1    701 5.2518e+11                                   
+    ## 2    653 3.5966e+11 48 1.6552e+11 6.2608 < 2.2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 ``` r
 sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
@@ -413,10 +449,10 @@ p
 (Intercept)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--2919328.65<br>(1027441.51)
+-2852011.53<br>(1029235.75)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-<strong>0.005</strong>
+<strong>0.006</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 -2932099.44<br>(1168633.65)
@@ -425,7 +461,7 @@ p
 <strong>0.012</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-33817.84<br>(7463.38)
+33817.84<br>(7460.32)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -436,10 +472,10 @@ p
 Year
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1464.64<br>(509.55)
+1431.25<br>(510.44)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-<strong>0.004</strong>
+<strong>0.005</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 1485.03<br>(579.49)
@@ -457,17 +493,17 @@ Year
 US code \[AL\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-10593.82<br>(9467.25)
+10615.10<br>(9466.18)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.264
+0.263
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11527.52<br>(9513.98)
+11527.52<br>(9510.09)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.226
@@ -478,17 +514,17 @@ US code \[AL\]
 US code \[AR\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-16507.37<br>(24626.07)
+16463.97<br>(24623.25)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.503
+0.504
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-14603.34<br>(24753.24)
+14603.34<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.555
@@ -499,7 +535,7 @@ US code \[AR\]
 US code \[AZ\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-22297.64<br>(8739.63)
+22318.44<br>(8738.64)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.011</strong>
@@ -509,7 +545,7 @@ US code \[AZ\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-23210.22<br>(8782.14)
+23210.22<br>(8778.54)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.008</strong>
@@ -520,7 +556,7 @@ US code \[AZ\]
 US code \[CA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-39919.30<br>(7789.29)
+39927.83<br>(7788.39)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -530,7 +566,7 @@ US code \[CA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-40293.59<br>(7831.26)
+40293.59<br>(7828.05)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -541,7 +577,7 @@ US code \[CA\]
 US code \[CO\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-39776.27<br>(9092.77)
+39789.62<br>(9091.73)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -551,7 +587,7 @@ US code \[CO\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-40362.12<br>(9140.74)
+40362.12<br>(9136.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -562,7 +598,7 @@ US code \[CO\]
 US code \[CT\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-51626.27<br>(12855.99)
+51622.93<br>(12854.50)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -572,7 +608,7 @@ US code \[CT\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-51479.81<br>(12926.96)
+51479.81<br>(12921.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -583,7 +619,7 @@ US code \[CT\]
 US code \[FL\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-23324.98<br>(8053.90)
+23346.59<br>(8052.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.004</strong>
@@ -593,7 +629,7 @@ US code \[FL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-24273.14<br>(8091.63)
+24273.14<br>(8088.31)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.003</strong>
@@ -604,7 +640,7 @@ US code \[FL\]
 US code \[GA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11557.81<br>(8890.90)
+11553.60<br>(8889.87)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.194
@@ -614,7 +650,7 @@ US code \[GA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11373.14<br>(8939.82)
+11373.14<br>(8936.16)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.204
@@ -625,7 +661,7 @@ US code \[GA\]
 US code \[HI\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-31303.55<br>(10051.65)
+31315.79<br>(10050.49)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.002</strong>
@@ -635,7 +671,7 @@ US code \[HI\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-31840.58<br>(10105.47)
+31840.58<br>(10101.33)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.002</strong>
@@ -646,17 +682,17 @@ US code \[HI\]
 US code \[IA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-9406.76<br>(24632.39)
+9463.51<br>(24629.59)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.703
+0.701
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11896.64<br>(24753.24)
+11896.64<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.631
@@ -667,17 +703,17 @@ US code \[IA\]
 US code \[ID\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-10609.89<br>(10052.53)
+10624.92<br>(10051.37)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.292
+0.291
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11268.98<br>(10105.47)
+11268.98<br>(10101.33)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.265
@@ -688,7 +724,7 @@ US code \[ID\]
 US code \[IL\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-49952.98<br>(8690.09)
+49962.75<br>(8689.09)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -698,7 +734,7 @@ US code \[IL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-50381.53<br>(8736.85)
+50381.53<br>(8733.27)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -709,17 +745,17 @@ US code \[IL\]
 US code \[IN\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-29363.92<br>(11589.33)
+29411.14<br>(11588.07)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-<strong>0.012</strong>
+<strong>0.011</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-31435.33<br>(11630.84)
+31435.33<br>(11626.08)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.007</strong>
@@ -730,7 +766,7 @@ US code \[IN\]
 US code \[KS\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-30259.07<br>(15450.87)
+30260.18<br>(15449.08)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.051
@@ -740,10 +776,10 @@ US code \[KS\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-30307.89<br>(15536.27)
+30307.89<br>(15529.90)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.052
+0.051
 </td>
 </tr>
 <tr>
@@ -751,7 +787,7 @@ US code \[KS\]
 US code \[KY\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-13991.70<br>(12855.99)
+13988.36<br>(12854.50)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.277
@@ -761,10 +797,10 @@ US code \[KY\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-13845.23<br>(12926.96)
+13845.23<br>(12921.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.285
+0.284
 </td>
 </tr>
 <tr>
@@ -772,17 +808,17 @@ US code \[KY\]
 US code \[LA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-831.32<br>(12860.84)
+854.69<br>(12859.37)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.948
+0.947
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1856.57<br>(12926.96)
+1856.57<br>(12921.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.886
@@ -793,7 +829,7 @@ US code \[LA\]
 US code \[MA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-46048.75<br>(8279.93)
+46059.91<br>(8278.97)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -803,7 +839,7 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-46538.15<br>(8323.94)
+46538.15<br>(8320.53)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -814,7 +850,7 @@ US code \[MA\]
 US code \[MD\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-31200.81<br>(9358.74)
+31220.25<br>(9357.67)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.001</strong>
@@ -824,7 +860,7 @@ US code \[MD\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-32053.74<br>(9405.75)
+32053.74<br>(9401.89)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.001</strong>
@@ -835,7 +871,7 @@ US code \[MD\]
 US code \[ME\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--15503.31<br>(18181.26)
+-15496.64<br>(18179.15)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.394
@@ -845,7 +881,7 @@ US code \[ME\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--15210.39<br>(18281.48)
+-15210.39<br>(18273.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.406
@@ -856,17 +892,17 @@ US code \[ME\]
 US code \[MI\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-7714.92<br>(13899.41)
+7754.98<br>(13897.84)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.579
+0.577
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-9472.48<br>(13962.71)
+9472.48<br>(13956.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.498
@@ -877,17 +913,17 @@ US code \[MI\]
 US code \[MN\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--13043.62<br>(24619.74)
+-13020.25<br>(24616.90)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.596
+0.597
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--12018.37<br>(24753.24)
+-12018.37<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.627
@@ -898,17 +934,17 @@ US code \[MN\]
 US code \[MO\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-21132.22<br>(13894.38)
+21163.93<br>(13892.81)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.129
+0.128
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-22523.62<br>(13962.71)
+22523.62<br>(13956.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.107
@@ -919,17 +955,17 @@ US code \[MO\]
 US code \[MS\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-7440.75<br>(18201.60)
+7497.50<br>(18199.57)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.683
+0.681
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-9930.63<br>(18281.48)
+9930.63<br>(18273.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.587
@@ -940,17 +976,17 @@ US code \[MS\]
 US code \[MT\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--6539.40<br>(12121.61)
+-6549.41<br>(12120.21)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.590
+0.589
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--6978.79<br>(12187.65)
+-6978.79<br>(12182.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.567
@@ -961,17 +997,17 @@ US code \[MT\]
 US code \[NC\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-7495.91<br>(10052.53)
+7510.93<br>(10051.37)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.456
+0.455
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-8154.99<br>(10105.47)
+8154.99<br>(10101.33)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.420
@@ -982,7 +1018,7 @@ US code \[NC\]
 US code \[ND\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--3793.61<br>(18181.26)
+-3786.93<br>(18179.15)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.835
@@ -992,7 +1028,7 @@ US code \[ND\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--3500.68<br>(18281.48)
+-3500.68<br>(18273.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.848
@@ -1003,20 +1039,20 @@ US code \[ND\]
 US code \[NH\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-19031.18<br>(18201.60)
+19087.93<br>(18199.57)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.296
+0.295
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-21521.06<br>(18281.48)
+21521.06<br>(18273.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.240
+0.239
 </td>
 </tr>
 <tr>
@@ -1024,17 +1060,17 @@ US code \[NH\]
 US code \[NJ\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-12750.32<br>(12868.10)
+12787.05<br>(12866.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.322
+0.321
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-14361.42<br>(12926.96)
+14361.42<br>(12921.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.267
@@ -1045,17 +1081,17 @@ US code \[NJ\]
 US code \[NM\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-9381.92<br>(10257.76)
+9396.18<br>(10256.58)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.361
+0.360
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-10007.72<br>(10312.15)
+10007.72<br>(10307.92)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.332
@@ -1066,7 +1102,7 @@ US code \[NM\]
 US code \[NV\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-24560.63<br>(10051.65)
+24572.87<br>(10050.49)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.015</strong>
@@ -1076,7 +1112,7 @@ US code \[NV\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-25097.66<br>(10105.47)
+25097.66<br>(10101.33)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.013</strong>
@@ -1087,7 +1123,7 @@ US code \[NV\]
 US code \[NY\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-54438.71<br>(8391.64)
+54449.09<br>(8390.67)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -1097,7 +1133,7 @@ US code \[NY\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-54894.37<br>(8436.52)
+54894.37<br>(8433.06)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1108,7 +1144,7 @@ US code \[NY\]
 US code \[OH\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-28958.36<br>(8785.37)
+28973.72<br>(8784.37)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.001</strong>
@@ -1118,7 +1154,7 @@ US code \[OH\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-29632.10<br>(8830.79)
+29632.10<br>(8827.18)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.001</strong>
@@ -1129,7 +1165,7 @@ US code \[OH\]
 US code \[OK\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-22222.49<br>(10496.91)
+22225.83<br>(10495.70)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.035</strong>
@@ -1139,7 +1175,7 @@ US code \[OK\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-22368.96<br>(10554.82)
+22368.96<br>(10550.49)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.034</strong>
@@ -1150,17 +1186,17 @@ US code \[OK\]
 US code \[OR\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-10721.85<br>(9095.63)
+10741.89<br>(9094.59)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.239
+0.238
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11600.64<br>(9140.74)
+11600.64<br>(9136.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.205
@@ -1171,7 +1207,7 @@ US code \[OR\]
 US code \[PA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-33254.86<br>(12122.98)
+33239.28<br>(12121.59)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.006</strong>
@@ -1181,7 +1217,7 @@ US code \[PA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-32571.36<br>(12187.65)
+32571.36<br>(12182.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.008</strong>
@@ -1192,17 +1228,17 @@ US code \[PA\]
 US code \[PR\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--5109.46<br>(24645.04)
+-5186.25<br>(24642.29)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.836
+0.833
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--8478.12<br>(24753.24)
+-8478.12<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.732
@@ -1213,7 +1249,7 @@ US code \[PR\]
 US code \[RI\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-35536.65<br>(11585.85)
+35493.25<br>(11584.58)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.002</strong>
@@ -1223,7 +1259,7 @@ US code \[RI\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-33632.63<br>(11630.84)
+33632.63<br>(11626.08)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.004</strong>
@@ -1234,20 +1270,20 @@ US code \[RI\]
 US code \[SC\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1866.29<br>(9718.36)
+1870.58<br>(9717.24)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.848
+0.847
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-2054.60<br>(9771.86)
+2054.60<br>(9767.86)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.834
+0.833
 </td>
 </tr>
 <tr>
@@ -1255,17 +1291,17 @@ US code \[SC\]
 US code \[SD\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-4857.01<br>(24645.04)
+4780.22<br>(24642.29)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.844
+0.846
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1488.35<br>(24753.24)
+1488.35<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.952
@@ -1276,7 +1312,7 @@ US code \[SD\]
 US code \[TN\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-21249.20<br>(12122.98)
+21233.62<br>(12121.59)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.080
@@ -1286,7 +1322,7 @@ US code \[TN\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-20565.70<br>(12187.65)
+20565.70<br>(12182.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.092
@@ -1297,7 +1333,7 @@ US code \[TN\]
 US code \[TX\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-24724.46<br>(8072.68)
+25203.55<br>(8084.08)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.002</strong>
@@ -1307,10 +1343,31 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-25430.15<br>(8113.55)
+25966.88<br>(8121.77)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.002</strong>
+<strong>0.001</strong>
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+US code \[TX ()\]
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-261.44<br>(24642.29)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+0.992
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-3553.32<br>(24743.10)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.886
 </td>
 </tr>
 <tr>
@@ -1318,17 +1375,17 @@ US code \[TX\]
 US code \[UT\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-18515.63<br>(24655.57)
+18605.77<br>(24652.86)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.453
+0.451
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-22470.15<br>(24753.24)
+22470.15<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.364
@@ -1339,7 +1396,7 @@ US code \[UT\]
 US code \[VA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-25345.27<br>(8733.96)
+25348.10<br>(8732.95)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>0.004</strong>
@@ -1349,7 +1406,7 @@ US code \[VA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-25469.20<br>(8782.14)
+25469.20<br>(8778.54)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.004</strong>
@@ -1360,7 +1417,7 @@ US code \[VA\]
 US code \[WA\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-34403.46<br>(8344.30)
+34416.29<br>(8343.34)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -1370,7 +1427,7 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-34966.19<br>(8388.12)
+34966.19<br>(8384.68)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1381,7 +1438,7 @@ US code \[WA\]
 US code \[WI\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-24584.87<br>(13886.79)
+24574.85<br>(13885.18)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.077
@@ -1391,7 +1448,7 @@ US code \[WI\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-24145.48<br>(13962.71)
+24145.48<br>(13956.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.084
@@ -1402,7 +1459,7 @@ US code \[WI\]
 US code \[WV\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-140791.89<br>(24655.57)
+140882.03<br>(24652.86)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
@@ -1412,7 +1469,7 @@ US code \[WV\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-144746.40<br>(24753.24)
+144746.40<br>(24743.10)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1423,7 +1480,7 @@ US code \[WV\]
 US code \[WY\]
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--7411.96<br>(18181.26)
+-7405.28<br>(18179.15)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 0.684
@@ -1433,7 +1490,7 @@ US code \[WY\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--7119.03<br>(18281.48)
+-7119.03<br>(18273.99)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 0.697
@@ -1458,13 +1515,13 @@ Observations
 R<sup>2</sup> / R<sup>2</sup> adjusted
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.320 / 0.270
+0.322 / 0.271
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 0.009 / 0.008
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.312 / 0.262
+0.313 / 0.263
 </td>
 </tr>
 <tr>
@@ -1472,13 +1529,13 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 log-Likelihood
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8046.789
+-8046.170
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
 -8179.242
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8051.202
+-8050.377
 </td>
 </tr>
 </table>
@@ -1497,7 +1554,7 @@ in some models
 ``` r
 lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
              Average_Wage~Acres_burned)
-lm_big6<- lm(data = fire_full[full_6,],
+lm_big6<- lm(data = fire_full %>% filter(big6),
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
@@ -1549,19 +1606,19 @@ p
 (Intercept)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-71114.14<br>(7055.74)
+71124.21<br>(7251.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-62390.05<br>(1212.35)
+62331.65<br>(1298.48)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-70841.26<br>(5284.14)
+56185.72<br>(5666.53)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1575,19 +1632,38 @@ Acres burned
 0.00<br>(0.01)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.628
+0.687
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.00<br>(0.00)
+-0.00<br>(0.00)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.793
+0.988
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.00<br>(0.00)
+0.00<br>(0.01)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.470
+0.494
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+US code \[CA\]
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+14322.89<br>(7099.95)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.045</strong>
 </td>
 </tr>
 <tr>
@@ -1603,10 +1679,10 @@ US code \[FL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--13214.38<br>(5958.60)
+3148.78<br>(6851.34)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.027</strong>
+0.646
 </td>
 </tr>
 <tr>
@@ -1622,26 +1698,7 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-9511.76<br>(6776.75)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.161
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-US code \[NY\]
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-18491.96<br>(7247.30)
+19220.57<br>(7530.44)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>0.011</strong>
@@ -1660,10 +1717,10 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--12780.86<br>(5404.89)
+1771.18<br>(6841.01)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.019</strong>
+0.796
 </td>
 </tr>
 <tr>
@@ -1679,10 +1736,10 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--3452.67<br>(5801.36)
+11036.00<br>(7779.61)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.552
+0.157
 </td>
 </tr>
 <tr>
@@ -1690,13 +1747,13 @@ US code \[WA\]
 Observations
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-99
+81
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-696
+583
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-320
+258
 </td>
 </tr>
 <tr>
@@ -1704,13 +1761,13 @@ Observations
 R<sup>2</sup> / R<sup>2</sup> adjusted
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.002 / -0.008
+0.002 / -0.011
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.000 / -0.001
+0.000 / -0.002
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.122 / 0.105
+0.069 / 0.046
 </td>
 </tr>
 <tr>
@@ -1718,13 +1775,13 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 log-Likelihood
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--1173.197
+-961.919
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8100.203
+-6783.518
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--3717.984
+-3000.925
 </td>
 </tr>
 </table>
@@ -1740,7 +1797,7 @@ We will do the the same for number of wildfires
 ``` r
 lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
              Average_Wage~fires_Num)
-lm_big6_2<- lm(data = fire_full[full_6,],
+lm_big6_2<- lm(data = fire_full %>% filter(big6),
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
@@ -1792,19 +1849,19 @@ p
 (Intercept)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-58084.82<br>(40355.25)
+57663.33<br>(69234.08)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.153
+0.407
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-61834.32<br>(1391.90)
+61977.08<br>(1519.20)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-89636.35<br>(17604.97)
+62888.69<br>(7194.07)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1815,22 +1872,41 @@ p
 fires Num
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1.92<br>(4.83)
+1.98<br>(8.59)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.691
+0.818
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.25<br>(0.32)
+0.12<br>(0.36)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.437
+0.733
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--1.86<br>(2.09)
+-3.12<br>(2.47)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.373
+0.208
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+US code \[CA\]
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+35828.53<br>(16525.37)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.031</strong>
 </td>
 </tr>
 <tr>
@@ -1846,10 +1922,10 @@ US code \[FL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--26838.63<br>(12934.39)
+4245.98<br>(6913.85)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.039</strong>
+0.540
 </td>
 </tr>
 <tr>
@@ -1865,29 +1941,10 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--7467.44<br>(16169.15)
+15309.35<br>(7791.70)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.645
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-US code \[NY\]
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--99.71<br>(18079.12)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.996
+0.051
 </td>
 </tr>
 <tr>
@@ -1903,10 +1960,10 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--13521.50<br>(4812.49)
+23913.17<br>(18699.56)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.005</strong>
+0.202
 </td>
 </tr>
 <tr>
@@ -1922,10 +1979,10 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--18098.82<br>(15218.53)
+10553.20<br>(7763.43)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.235
+0.175
 </td>
 </tr>
 <tr>
@@ -1933,13 +1990,13 @@ US code \[WA\]
 Observations
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-99
+81
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-696
+583
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-320
+258
 </td>
 </tr>
 <tr>
@@ -1947,13 +2004,13 @@ Observations
 R<sup>2</sup> / R<sup>2</sup> adjusted
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.002 / -0.009
+0.001 / -0.012
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.001 / -0.001
+0.000 / -0.002
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.123 / 0.106
+0.073 / 0.051
 </td>
 </tr>
 <tr>
@@ -1961,13 +2018,13 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 log-Likelihood
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--1173.236
+-961.975
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--8099.934
+-6783.460
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--3717.844
+-3000.349
 </td>
 </tr>
 </table>

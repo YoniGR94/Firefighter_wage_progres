@@ -62,29 +62,29 @@ get_fire<- GET(wage_rl) %>%
 Now we will organize it a little bit
 
 ```{r data usa api 2}
-df_fire<- get_fire$data %>%
+df_wage<- get_fire$data %>%
   select(c(2,4:7)) %>%
   rename(Average_Wage= 'Average Wage',
-         'Mean Wage Appx MOE' = 'Average Wage Appx MOE') %>%
+         'Mean_Wage_Appx_MOE' = 'Average Wage Appx MOE') %>%
   mutate(Year= as.numeric(Year),
          log_Wage= log(Average_Wage),
          US_code= map_chr(PUMA,
-                                  function(x) { nth(str_split(x, ",")[[1]],-1) } ))
+                                  function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
 ```
 
 Here you can see the data divided by year and countries
 
 ```{r simple vis}
-pres_yir<- table(df_fire$Year) #add to bar plot
+pres_yir<- table(df_wage$Year) #add to bar plot
 
-{bp<- barplot(table(df_fire$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
+{bp<- barplot(table(df_wage$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
 #grid(nx= NA, ny= NULL)
 text(bp,pres_yir-6,labels = pres_yir)}
 
-df_fire<- df_fire %>%
-  mutate(US_code=replace(US_code, US_code=="TX (79500US4805905)", "TX")) #bug fixing "TX (79500US4805905)"
-  
-{bp<- barplot(sort(table(df_fire$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
+df_wage<- df_wage %>%
+  mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
+
+{bp<- barplot(sort(table(df_wage$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
 grid(nx= NA, ny= NULL, col = "black")}
 ```
 
@@ -97,29 +97,36 @@ wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states') %>%
   content("text") %>%
   readHTMLTable(trim=T, as.data.frame=T, header= T, skip.rows = 1)
   
-wiki_state<- wiki_get[[1]] %>%
+df_fire<- wiki_get[[1]] %>%
   select(1:3) %>%
   drop_na(abbr) %>%
-  `colnames<-`(c("State","US_code","Instance_of"))
+  `colnames<-`(c("State","US_code","Instance_of")) %>% 
+  right_join(df_wage,by="US_code")
 
-kable(wiki_state[1:4,1:2])
+kable(df_fire[sample(1:703,4),c(1,2,5)])
 
-df_fire <- merge(df_fire,wiki_state,by="US_code")
+#df_fire <- merge(df_wage,wiki_state,by="US_code")
 ```
 
 ```{r script delete 2018, include=FALSE, eval=FALSE}
----
-get_18<- GET("https://www.iii.org/table-archive/221865/file")
-my_content18<- content(get_18, as= 'text', encoding = "UTF-8")
-m_TF<- F
-pre_df18<- readHTMLTable(my_content18, trim=T, as.data.frame=T, header=m_TF)
-if(m_TF)
-  {bind_df18<- bind_rows(pre_df18)[4:6]} else {bind_df18<-pre_df18[[3]]}
-colnames(bind_df18)<- c('State','fires_Num','Acres_burned')
-the_df18<- bind_df18[!is.na(bind_df18$V2),]
-the_df18<- the_df18[!duplicated(the_df18[,'State']),] #delete duplicate states
-the_df18$Year<- 2018 #year parameter for future combine
----
+x<- ("https://www.iii.org/table-archive/220226/file")
+m_TF<- T
+year<- "2016"
+  my_get<- GET(x) %>%
+    content(as= 'text', encoding = "UTF-8") %>%
+    readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
+  if(m_TF)
+  {my_get<- bind_rows(my_get)[4:6]} else
+  {my_get<-my_get[[3]][-1,] %>% 
+    'colnames<-'(my_get[[3]][1,1:3])
+  }
+  my_get<- my_get %>%
+  rename(fires_Num='Number of fires',Acres_burned= 'Number of acres burned') %>% 
+  filter(!is.na(State)) %>%
+  mutate(Year= year) #year parameter for combining
+  return(my_get)
+
+  my_get
 ```
 
 ### Download Automation
@@ -129,18 +136,19 @@ The data been taken from the [Insurance Information Institute](https://www.iii.o
 You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-statistics-wildfires'), but the imported data from Data USA reach only 2019.
 
 ```{r firefield outomation}
-#לתקן פונקציה ולהתאים לטבלה 16ת18
 call_fire<- function(x,year, m_TF= T)
   {
   my_get<- GET(x) %>%
     content(as= 'text', encoding = "UTF-8") %>%
-    readHTMLTable(trim=T, as.data.frame=T, header=m_TF, skip.rows =  1:3)
+    readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
   if(m_TF)
-  {my_get<- bind_rows(my_get)[4:6]} else {my_get<-my_get[[3]]}
+  {my_get<- bind_rows(my_get)[4:6]} else
+  {my_get<-my_get[[3]][-1,] %>% 
+    'colnames<-'(my_get[[3]][1,1:3])
+  }
   my_get<- my_get %>%
-  rename(fires_Num= 'Number of fires',Acres_burned= 'Number of acres burned') %>% 
+  'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
   filter(!is.na(State)) %>%
-  #the_df<- the_df[!duplicated(the_df[,'State']),] #delete duplicate states
   mutate(Year= year) #year parameter for combining
   return(my_get)
   }
@@ -151,21 +159,21 @@ df_14<- call_fire("https://www.iii.org/table-archive/214725/file", 2014)
 df_15<- call_fire("https://www.iii.org/table-archive/218674/file", 2015)
 df_16<- call_fire("https://www.iii.org/table-archive/220226/file", 2016)
 df_17<- call_fire("https://www.iii.org/table-archive/220932/file", 2017)
-df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)[-1,] #bug fixing
+df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)
 df_19<- call_fire("https://www.iii.org/table-archive/222809/file", 2019)
 
-no_coma<- function(x) #from character"12,345" to numeric 12345
-  {as.numeric(gsub(",","", x))}
+firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
+  mutate(across(c(fires_Num,Acres_burned), ~replace(.,.=='(1)', '0')),
+         across(c(fires_Num,Acres_burned), ~parse_number(.)),
+         across(State, ~replace(.,.=='New York ', "New York") ) )%>%
+  filter(!str_detect(State, "United States")) #%>%
+  #left_join(df_fire)#, by= c("State", "Year"))
 
-firelist<- rbind(df_14,df_15,df_16,df_17,df_18,df_19) %>%
-  mutate(across(c(fires_Num,Acres_burned), ~map_chr(x., ifelse(.x== "(1)", 0, .x))))
-  #fires_Num=replace(fires_Num, fires_Num=="(1)", 0)) %>%
-  #mutate(Acres_burned=replace(Acres_burned, Acres_burned=="(1)", 0)) %>%
-  mutate(Acres_burned= no_coma(Acres_burned))%>%
-  mutate(fires_Num= no_coma(fires_Num))
 # merge & head
-fire_full<- (merge(firelist, df_fire, by= c("State", "Year"))) %>%
-  select(-c(9,11))
+fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
+  select(-c(9:10))
+#fix NY לתקן
+sort(unique(firelist$State))
 ```
 
 Here are some rows from the data I combined
@@ -178,19 +186,33 @@ kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 
 We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
-```{r vizualization, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
-count_state<-fire_full %>%   #sum by country
-  count(State, sort= T,name= "Times apear")
-big_6 <- as.vector(count_state[1:6,1])
-full_6<- fire_full$State%in%big_6
-fire_full$big6<- full_6
-big_6
-mu_fire<- mean(df_fire$Average_Wage)
-mu_fire6<- mean(df_fire$Average_Wage[full_6])
+```{r vizualization, warning=FALSE, message=FALSE, echo=F}
+#big_6<-fire_full %>%   #sum by country
+  #count(State, sort= T,name= "Times_apear") %>%
+  #mutate(biggest= order(State)) %>%
+  #ungroup()  %>% select(1) %>% top_n(6)
+
+#לתקן את כל הצ'אנק
+big_n<- fire_full %>%
+  group_by(State) %>% 
+  summarise(size= n()) %>%
+  arrange(desc(size)) #%>% 
+#  top_n(6, size) %>% 
+#  select(1)
+
+fire_full<- fire_full %>% 
+  mutate(big6= State%in% unlist(
+    big_n%>% 
+      top_n(6, size) %>% 
+      select(1)))
+
+#big_6
+mu_fire<- mean(fire_full$Average_Wage[-fire_full$big6])
+mu_fire6<- mean(fire_full$Average_Wage[fire_full$big6])
 
 paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ for the top 6 reported. the difference is", round(mu_fire6-mu_fire,1),"$")
 
-t.fire<- t.test(fire_full$Average_Wage[full_6],fire_full$Average_Wage[-full_6])
+t.fire<- t.test(fire_full$Average_Wage[fire_full$big6],fire_full$Average_Wage[-fire_full$big6])
 t.fire
 ```
 
@@ -203,7 +225,7 @@ count_fire<-fire_full %>%   #sum by country
 fire_min <- count_fire[order(count_fire$much,decreasing = T),]
 min_fire_gg<- fire_full$State%in%fire_min$State[1:43]
 
-big_2 <- as.vector(count_state[1:6,1])
+big_2 <- as.vector(big_n%>%  top_n(6, size) %>% select(1))
 full_2<- fire_full$State%in% c("California", "Alaska")
 
 fire_full [full_2,]%>%
@@ -228,7 +250,7 @@ Were we can see the distribution of avarage wage of all States & big 6. In addit
 
 ```{r histogram, warning=FALSE, message=FALSE}
 fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= full_6))+
+  ggplot(aes(x= Average_Wage, fill= big6))+
   scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
   geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
@@ -240,7 +262,7 @@ fire_full %>%
        green: the rest of states")+ scale_x_continuous(labels = scales::comma)+
   theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))
 
-fire_full[full_6,] %>%
+fire_full %>% filter(big6) %>% 
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
                                quantile_lines = TRUE, quantiles = 2)+
@@ -257,7 +279,7 @@ We see even top 6 reported states are nit homogenize group.
 
 And what about time effect? here we can see 
 
-```{r time vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
+```{r time vis, warning=FALSE, message=FALSE, echo=F}
 fire_full %>%
   ggplot(aes(y= factor(Year), x= Average_Wage, fill = ..x..)) +
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
@@ -270,7 +292,7 @@ fire_full %>%
       panel.spacing = unit(0.1, "lines"),
       strip.text.x = element_text(size = 6) )
 
-fire_full[full_6,] %>%
+fire_full %>% filter(big6) %>%
   ggplot(aes(y= Average_Wage,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title= "Avarage Wage by Year Big 6")+ xlab("Year")+ ylab("Wage")+
@@ -281,14 +303,15 @@ Although visually the effect of time is minor, there are some trends. Note that 
 
 Here we will try to see whether there is effect of number of acres burned to average wage. surprisingly, there is none.
 
-```{r AB vis, warning=FALSE, message=FALSE, cache=TRUE, echo=F}
+```{r AB vis, warning=FALSE, message=FALSE, echo=F}
 A<- fire_full %>%
   ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
   labs(title = "Acres Effect on Wage State of All")+xlab("Acres burned")+
   scale_x_continuous(labels = scales::comma, limits = c(0,2500000))
 
-B<- fire_full[full_6,] %>%
+B<-fire_full %>%
+  filter(big6) %>% 
   ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
   labs(title= "Acres Effect on Wage State of Big 6",caption= "red: lm model, blue: loess model")+
@@ -311,7 +334,7 @@ Clearly, there is no positive effect of burned Acres on average wages, and there
 
 This section is a little bit long, only due to the 52 states.
 
-```{r Models, cache=TRUE, max.height='30px'}
+```{r Models, max.height='30px'}
 lm_year<- lm(data= df_fire, Average_Wage~ Year)
 lm_state<-lm(data= df_fire, Average_Wage~ US_code)
 lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
@@ -335,10 +358,10 @@ Finally, now we will see the effect on the wage using the burned acres in some m
 
 - lm_all all of the states
 
-```{r by acres model, cache=TRUE}
+```{r by acres model}
 lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
              Average_Wage~Acres_burned)
-lm_big6<- lm(data = fire_full[full_6,],
+lm_big6<- lm(data = fire_full %>% filter(big6),
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
@@ -355,10 +378,10 @@ We will do the the same for number of wildfires
 
 - lm_all2: all of the states
 
-```{r by num model, cache=TRUE}
+```{r by num model}
 lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
              Average_Wage~fires_Num)
-lm_big6_2<- lm(data = fire_full[full_6,],
+lm_big6_2<- lm(data = fire_full %>% filter(big6),
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
@@ -385,10 +408,10 @@ And maybe simply there is no correlation. As far as I learn from the data, the $
 
 On the other hand, there is significant effect of the year of over 1,400$ per year, as we can see here:
 
-```{r release year, message=FALSE, warning= FALSE, echo=FALSE, cache=TRUE}
+```{r release year, message=FALSE, warning= FALSE, echo=FALSE}
 year_paste<- fire_full$Average_Wage~fire_full$Year
 library(ggpmisc)
-fire_full[full_6,] %>%
+fire_full %>% filter(big6) %>%
   ggplot(aes(y= Average_Wage,x= Year))+#, fill= factor(Year) ))+
   geom_smooth(method = "lm")+ scale_color_brewer(palette="Accent")+
   labs(title = "Predicted Wage by Year", xlab= "Year")+ xlab("Year")+
