@@ -61,8 +61,7 @@ wage_rl<-
 
 get_fire<- GET(wage_rl) %>%
   content(as= 'text', encoding = "UTF-8") %>%
-  fromJSON(.) %>%
-  glimpse(.)
+  fromJSON(.) %>% glimpse(.)
 ```
 
     ## List of 2
@@ -103,31 +102,40 @@ df_wage<- get_fire$data %>%
          'Mean_Wage_Appx_MOE' = 'Average Wage Appx MOE') %>%
   mutate(Year= as.numeric(Year),
          log_Wage= log(Average_Wage),
-         US_code= map_chr(PUMA,
-                                  function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
+         US_code= map_chr(PUMA, function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
 ```
 
 Here you can see the data divided by year and countries
 
 ``` r
-pres_yir<- table(df_wage$Year) #add to bar plot
-
-{bp<- barplot(table(df_wage$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
-#grid(nx= NA, ny= NULL)
-text(bp,pres_yir-6,labels = pres_yir)}
+df_wage %>%
+  count(Year, name = "count_yr") %>% 
+  mutate(Year = factor(Year)) %>%
+  ggplot( aes(x=Year, y= count_yr))+
+  geom_bar(stat= "identity",fill="tan", alpha=.9)+
+  geom_text(aes(label=count_yr),
+            position=position_dodge (width=0.3), vjust=1.2)+
+  xlab("")+ ylab('reports')+grids()+
+  theme_bw()
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-1.png)<!-- -->
 
 ``` r
-df_wage<- df_wage %>%
-  mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
-
-{bp<- barplot(sort(table(df_wage$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
-grid(nx= NA, ny= NULL, col = "black")}
+df_wage %>%
+  count(US_code, name = "count_st") %>% 
+  mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
+  ggplot( aes(x=US_code, y=count_st))+
+  geom_bar(stat="identity", fill="#f68060", alpha=.9) +
+    coord_flip() + xlab("")
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-2.png)<!-- -->
+
+``` r
+df_wage<- df_wage %>%
+  mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
+```
 
 ### Wiki coder
 
@@ -149,16 +157,12 @@ df_fire<- wiki_get[[1]] %>%
 kable(df_fire[sample(1:703,4),c(1,2,5)])
 ```
 
-|     | State      | US_code | Year |
-|:----|:-----------|:--------|-----:|
-| 179 | Florida    | FL      | 2019 |
-| 608 | Texas      | TX      | 2016 |
-| 309 | Illinois   | IL      | 2014 |
-| 143 | California | CA      | 2014 |
-
-``` r
-#df_fire <- merge(df_wage,wiki_state,by="US_code")
-```
+|     | State          | US_code | Year |
+|:----|:---------------|:--------|-----:|
+| 397 | Missouri       | MO      | 2017 |
+| 579 | Texas          | TX      | 2019 |
+| 385 | Maryland       | MD      | 2015 |
+| 565 | South Carolina | SC      | 2015 |
 
 ### Download Automation
 
@@ -175,11 +179,9 @@ call_fire<- function(x,year, m_TF= T)
   my_get<- GET(x) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
-  if(m_TF)
-  {my_get<- bind_rows(my_get)[4:6]} else
-  {my_get<-my_get[[3]][-1,] %>% 
-    'colnames<-'(my_get[[3]][1,1:3])
-  }
+  if(m_TF) {my_get<- bind_rows(my_get)[4:6] }
+  else     {my_get<-my_get[[3]][-1,] %>% 
+    'colnames<-'(my_get[[3]][1,1:3]) }
   my_get<- my_get %>%
   'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
   filter(!is.na(State)) %>%
@@ -201,9 +203,7 @@ firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
          across(c(fires_Num,Acres_burned), ~parse_number(.)),
          across(State, ~replace(.,.=='New York ', "New York") ) )%>%
   filter(!str_detect(State, "United States")) #%>%
-  #left_join(df_fire)#, by= c("State", "Year"))
 
-# merge & head
 fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
   select(-c(9:10))
 #fix NY לתקן
@@ -235,12 +235,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                        PUMA                        | Average_Wage | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:--------------------------------------------------:|:------------:|:--------:|
-|  Florida   | 2019 |   2121    |    122500    |   FL    | state of the United States | Walton, Washington, Holmes & Bay Counties PUMA, FL |   64637.05   |  11.08   |
-|  Georgia   | 2016 |   5086    |    52119     |   GA    | state of the United States |              Forsyth County PUMA, GA               |   38005.98   |  10.55   |
-| Washington | 2018 |   1743    |    438834    |   WA    | state of the United States |    Skagit, Island & San Juan Counties PUMA, WA     |   61646.64   |  11.03   |
-|   Idaho    | 2018 |   1132    |    604481    |   ID    | state of the United States |   Lewiston City & Nez Perce Reservation PUMA, ID   |   36081.84   |  10.49   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                               PUMA                               | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:----------------------------------------------------------------:|:------------:|:--------:|
+|  Kentucky  | 2016 |   1220    |    73864     |   KY    | state of the United States | Northern Kentucky Area Development District (Southeast) PUMA, KY |   46975.10   |  10.76   |
+| New Jersey | 2019 |    727    |    11346     |   NJ    | state of the United States |            Burlington County (South & East) PUMA, NJ             |   42108.97   |  10.65   |
+|  Oklahoma  | 2019 |   1104    |    67142     |   OK    | state of the United States |                        Enid City PUMA, OK                        |   89943.48   |  11.41   |
+|  Montana   | 2014 |   1646    |    38118     |   MT    | state of the United States |                    Great Falls City PUMA, MT                     |   29044.54   |  10.28   |
 
 ## Overlooking the Data
 
@@ -270,9 +270,7 @@ and also has the biggest change in wildfires
 ``` r
 big_2 <- unlist(fire_full %>%
                   count(State,wt= Acres_burned, sort = T, name = 'mean_Acres') %>% 
-                  top_n(2, mean_Acres) %>%
-                  select(1))
-
+                  top_n(2, mean_Acres) %>% select(1))
 as.vector(big_2)
 ```
 
@@ -332,8 +330,7 @@ fire_full %>% filter(big6) %>%
   labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
-      legend.position="none",
-      panel.spacing = unit(0.1, "lines"),
+      legend.position="none", panel.spacing = unit(0.1, "lines"),
       strip.text.x = element_text(size = 6) )
 ```
 
@@ -374,8 +371,7 @@ lm_year<- lm(data= df_fire, Average_Wage~ Year)
 lm_state<-lm(data= df_fire, Average_Wage~ US_code)
 lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
 
-#anova test to Year effect
-anova(lm_state, lm_comb)
+anova(lm_state, lm_comb) #anova test to Year effect
 ```
 
     ## Analysis of Variance Table
@@ -389,8 +385,7 @@ anova(lm_state, lm_comb)
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 ``` r
-#anova test to State effect
-anova(lm_year , lm_comb)
+anova(lm_year , lm_comb) #anova test to State effect
 ```
 
     ## Analysis of Variance Table
@@ -1560,7 +1555,6 @@ lm_big6<- lm(data = fire_full %>% filter(big6),
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
-
 sjPlot::tab_model(lm_CA,lm_all,lm_big6, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm CA","lm all","lm big6"))
 ```
@@ -1803,7 +1797,6 @@ lm_big6_2<- lm(data = fire_full %>% filter(big6),
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
-
 sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2, show.ci= F,show.loglik= T,
                   collapse.se = T, dv.labels = c("lm CA","lm all","lm big6"))
 ```

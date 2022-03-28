@@ -56,8 +56,7 @@ wage_rl<-
 
 get_fire<- GET(wage_rl) %>%
   content(as= 'text', encoding = "UTF-8") %>%
-  fromJSON(.) %>%
-  glimpse(.)
+  fromJSON(.) %>% glimpse(.)
 ```
 Now we will organize it a little bit
 
@@ -68,24 +67,32 @@ df_wage<- get_fire$data %>%
          'Mean_Wage_Appx_MOE' = 'Average Wage Appx MOE') %>%
   mutate(Year= as.numeric(Year),
          log_Wage= log(Average_Wage),
-         US_code= map_chr(PUMA,
-                                  function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
+         US_code= map_chr(PUMA, function(x) { nth(str_split(x, ", ")[[1]],-1) } ))
 ```
 
 Here you can see the data divided by year and countries
 
 ```{r simple vis}
-pres_yir<- table(df_wage$Year) #add to bar plot
+df_wage %>%
+  count(Year, name = "count_yr") %>% 
+  mutate(Year = factor(Year)) %>%
+  ggplot( aes(x=Year, y= count_yr))+
+  geom_bar(stat= "identity",fill="tan", alpha=.9)+
+  geom_text(aes(label=count_yr),
+            position=position_dodge (width=0.3), vjust=1.2)+
+  xlab("")+ ylab('reports')+grids()+
+  theme_bw()
 
-{bp<- barplot(table(df_wage$Year), col = "tan", main = 'Reports by Year', xlab = 'Year')
-#grid(nx= NA, ny= NULL)
-text(bp,pres_yir-6,labels = pres_yir)}
+df_wage %>%
+  count(US_code, name = "count_st") %>% 
+  mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
+  ggplot( aes(x=US_code, y=count_st))+
+  geom_bar(stat="identity", fill="#f68060", alpha=.9) +
+    coord_flip() + xlab("")
 
 df_wage<- df_wage %>%
   mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
 
-{bp<- barplot(sort(table(df_wage$US_code)), col = "seagreen2", main = 'Reports by State', xlab = 'Year')
-grid(nx= NA, ny= NULL, col = "black")}
 ```
 
 ### Wiki coder
@@ -104,8 +111,6 @@ df_fire<- wiki_get[[1]] %>%
   right_join(df_wage,by="US_code")
 
 kable(df_fire[sample(1:703,4),c(1,2,5)])
-
-#df_fire <- merge(df_wage,wiki_state,by="US_code")
 ```
 
 ```{r script delete 2018, include=FALSE, eval=FALSE}
@@ -115,17 +120,13 @@ year<- "2016"
   my_get<- GET(x) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
-  if(m_TF)
-  {my_get<- bind_rows(my_get)[4:6]} else
-  {my_get<-my_get[[3]][-1,] %>% 
-    'colnames<-'(my_get[[3]][1,1:3])
-  }
+  if(m_TF) {my_get<- bind_rows(my_get)[4:6]} else
+  {my_get<-my_get[[3]][-1,] %>%  'colnames<-'(my_get[[3]][1,1:3]) }
   my_get<- my_get %>%
   rename(fires_Num='Number of fires',Acres_burned= 'Number of acres burned') %>% 
   filter(!is.na(State)) %>%
   mutate(Year= year) #year parameter for combining
   return(my_get)
-
   my_get
 ```
 
@@ -141,11 +142,9 @@ call_fire<- function(x,year, m_TF= T)
   my_get<- GET(x) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
-  if(m_TF)
-  {my_get<- bind_rows(my_get)[4:6]} else
-  {my_get<-my_get[[3]][-1,] %>% 
-    'colnames<-'(my_get[[3]][1,1:3])
-  }
+  if(m_TF) {my_get<- bind_rows(my_get)[4:6] }
+  else     {my_get<-my_get[[3]][-1,] %>% 
+    'colnames<-'(my_get[[3]][1,1:3]) }
   my_get<- my_get %>%
   'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
   filter(!is.na(State)) %>%
@@ -167,9 +166,7 @@ firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
          across(c(fires_Num,Acres_burned), ~parse_number(.)),
          across(State, ~replace(.,.=='New York ', "New York") ) )%>%
   filter(!str_detect(State, "United States")) #%>%
-  #left_join(df_fire)#, by= c("State", "Year"))
 
-# merge & head
 fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
   select(-c(9:10))
 #fix NY לתקן
@@ -187,24 +184,14 @@ kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
 ```{r vizualization, warning=FALSE, message=FALSE, echo=F}
-#big_6<-fire_full %>%   #sum by country
-  #count(State, sort= T,name= "Times_apear") %>%
-  #mutate(biggest= order(State)) %>%
-  #ungroup()  %>% select(1) %>% top_n(6)
-
 #לתקן את כל הצ'אנק
 big_n<- fire_full %>%
-  group_by(State) %>% 
-  summarise(size= n()) %>%
-  arrange(desc(size)) #%>% 
-#  top_n(6, size) %>% 
-#  select(1)
+  count(State, sort = T, name = 'size')
 
 fire_full<- fire_full %>% 
   mutate(big6= State%in% unlist(
     big_n%>% 
-      top_n(6, size) %>% 
-      select(1)))
+      top_n(6, size) %>% select(1)))
 
 #big_6
 mu_fire<- mean(fire_full$Average_Wage[-fire_full$big6])
@@ -221,9 +208,7 @@ Here are the progress of acres burned in the us. from a quick look at da data we
 ```{r fire progress, warning=FALSE, message=FALSE}
 big_2 <- unlist(fire_full %>%
                   count(State,wt= Acres_burned, sort = T, name = 'mean_Acres') %>% 
-                  top_n(2, mean_Acres) %>%
-                  select(1))
-
+                  top_n(2, mean_Acres) %>% select(1))
 as.vector(big_2)
 
 fire_full %>% filter(State%in% big_2)%>%
@@ -268,8 +253,7 @@ fire_full %>% filter(big6) %>%
   labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
-      legend.position="none",
-      panel.spacing = unit(0.1, "lines"),
+      legend.position="none", panel.spacing = unit(0.1, "lines"),
       strip.text.x = element_text(size = 6) )
 ```
 
@@ -286,8 +270,7 @@ fire_full %>%
   labs(title = 'Avarage Wage by Year')+ xlab("Year") +ylab(" ")+
   theme_tinyhand() +scale_x_continuous(labels=scales::comma,limits =c(0,200000) )+
     theme(
-      legend.position="none",
-      panel.spacing = unit(0.1, "lines"),
+      legend.position="none", panel.spacing = unit(0.1, "lines"),
       strip.text.x = element_text(size = 6) )
 
 fire_full %>% filter(big6) %>%
@@ -337,10 +320,8 @@ lm_year<- lm(data= df_fire, Average_Wage~ Year)
 lm_state<-lm(data= df_fire, Average_Wage~ US_code)
 lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
 
-#anova test to Year effect
-anova(lm_state, lm_comb)
-#anova test to State effect
-anova(lm_year , lm_comb)
+anova(lm_state, lm_comb) #anova test to Year effect
+anova(lm_year , lm_comb) #anova test to State effect
 
 sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
@@ -363,7 +344,6 @@ lm_big6<- lm(data = fire_full %>% filter(big6),
              Average_Wage~Acres_burned+US_code )
 lm_all<- lm(data = fire_full,
              Average_Wage~Acres_burned )
-
 sjPlot::tab_model(lm_CA,lm_all,lm_big6, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm CA","lm all","lm big6"))
 ```
@@ -383,7 +363,6 @@ lm_big6_2<- lm(data = fire_full %>% filter(big6),
              Average_Wage~fires_Num+US_code )
 lm_all2<- lm(data = fire_full,
              Average_Wage~fires_Num )
-
 sjPlot::tab_model(lm_CA2,lm_all2,lm_big6_2, show.ci= F,show.loglik= T,
                   collapse.se = T, dv.labels = c("lm CA","lm all","lm big6"))
 ```
