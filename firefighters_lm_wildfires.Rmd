@@ -1,7 +1,7 @@
 ---
-title: "Firefighter"
+title: "Firefighters' Wage and the Effect of Global Warming"
 author: "Yoni"
-date: "Feb 2022"
+date: "`r Sys.Date()`"
 output: github_document
 always_allow_html: true
 ---
@@ -80,19 +80,16 @@ df_wage %>%
   geom_bar(stat= "identity",fill="tan", alpha=.9)+
   geom_text(aes(label=count_yr),
             position=position_dodge (width=0.3), vjust=1.2)+
-  xlab("")+ ylab('reports')+grids()+
-  theme_bw()
+  xlab("")+ ylab('reports')+grids()+ theme_bw()
 
 df_wage %>%
   count(US_code, name = "count_st") %>% 
   mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
   ggplot( aes(x=US_code, y=count_st))+
-  geom_bar(stat="identity", fill="#f68060", alpha=.9) +
-    coord_flip() + xlab("")
+  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")
 
 df_wage<- df_wage %>%
   mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
-
 ```
 
 ### Wiki coder
@@ -100,8 +97,8 @@ df_wage<- df_wage %>%
 We are using Wikidata to import [key](https://www.wikidata.org/wiki/Wikidata:Lists/US_states) from 2- letters to state name.
 
 ```{r wiki, warning=FALSE}
-wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states') %>%
-  content("text") %>%
+wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')%>%
+  content("text")%>%
   readHTMLTable(trim=T, as.data.frame=T, header= T, skip.rows = 1)
   
 df_fire<- wiki_get[[1]] %>%
@@ -117,16 +114,13 @@ kable(df_fire[sample(1:703,4),c(1,2,5)])
 x<- ("https://www.iii.org/table-archive/220226/file")
 m_TF<- T
 year<- "2016"
-  my_get<- GET(x) %>%
-    content(as= 'text', encoding = "UTF-8") %>%
-    readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
-  if(m_TF) {my_get<- bind_rows(my_get)[4:6]} else
+my_get<- GET(x) %>% content(as= 'text', encoding = "UTF-8") %>%
+  readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
+if(m_TF) {my_get<- bind_rows(my_get)[4:6]} else
   {my_get<-my_get[[3]][-1,] %>%  'colnames<-'(my_get[[3]][1,1:3]) }
-  my_get<- my_get %>%
+my_get<- my_get %>%
   rename(fires_Num='Number of fires',Acres_burned= 'Number of acres burned') %>% 
-  filter(!is.na(State)) %>%
-  mutate(Year= year) #year parameter for combining
-  return(my_get)
+  filter(!is.na(State)) %>% mutate(Year= year) #year parameter for combining
   my_get
 ```
 
@@ -194,8 +188,8 @@ fire_full<- fire_full %>%
       top_n(6, size) %>% select(1)))
 
 #big_6
-mu_fire<- mean(fire_full$Average_Wage[-fire_full$big6])
-mu_fire6<- mean(fire_full$Average_Wage[fire_full$big6])
+mu_fire<-  mean(fire_full$Average_Wage[-fire_full$big6])
+mu_fire6<- mean(fire_full$Average_Wage[fire_full$big6] )
 
 paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ for the top 6 reported. the difference is", round(mu_fire6-mu_fire,1),"$")
 
@@ -221,7 +215,7 @@ fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
-   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
+  theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
         plot.background = element_rect(fill = "grey"),
         legend.key.height = unit(1, 'cm'), #change legend key height
         legend.text = element_text(size=1) #change legend text font size
@@ -229,7 +223,7 @@ fire_full %>% filter(!State%in% big_2)%>%
   theme_dark()+ylim(0,400000) #+scale_y_continuous(labels = scales::comma)
 ```
 
-Were we can see the distribution of avarage wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
+Were we can see the distribution of Average wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
 
 ```{r histogram, warning=FALSE, message=FALSE}
 fire_full %>%
@@ -250,7 +244,7 @@ fire_full %>% filter(big6) %>%
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
                                quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
-  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
+  labs(title = 'Average Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
       legend.position="none", panel.spacing = unit(0.1, "lines"),
@@ -267,7 +261,7 @@ fire_full %>%
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
                                quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "F", alpha = 0.95)+
-  labs(title = 'Avarage Wage by Year')+ xlab("Year") +ylab(" ")+
+  labs(title = 'Average Wage by Year')+ xlab("Year") +ylab(" ")+
   theme_tinyhand() +scale_x_continuous(labels=scales::comma,limits =c(0,200000) )+
     theme(
       legend.position="none", panel.spacing = unit(0.1, "lines"),
@@ -276,7 +270,7 @@ fire_full %>%
 fire_full %>% filter(big6) %>%
   ggplot(aes(y= Average_Wage,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
-  labs(title= "Avarage Wage by Year Big 6")+ xlab("Year")+ ylab("Wage")+
+  labs(title= "Average Wage by Year Big 6")+ xlab("Year")+ ylab("Wage")+
   theme_dark()+ scale_y_continuous(labels= scales::comma)
 ```
 
@@ -322,7 +316,6 @@ lm_comb<- lm(data= df_fire, Average_Wage~ Year+ US_code)
 
 anova(lm_state, lm_comb) #anova test to Year effect
 anova(lm_year , lm_comb) #anova test to State effect
-
 sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
 ```

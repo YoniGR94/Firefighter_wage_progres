@@ -1,7 +1,7 @@
-Firefighter
+Firefighters’ Wage and the Effect of Global Warming
 ================
 Yoni
-Feb 2022
+2022-04-04
 
 ## Intro
 
@@ -115,8 +115,7 @@ df_wage %>%
   geom_bar(stat= "identity",fill="tan", alpha=.9)+
   geom_text(aes(label=count_yr),
             position=position_dodge (width=0.3), vjust=1.2)+
-  xlab("")+ ylab('reports')+grids()+
-  theme_bw()
+  xlab("")+ ylab('reports')+grids()+ theme_bw()
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-1.png)<!-- -->
@@ -126,8 +125,7 @@ df_wage %>%
   count(US_code, name = "count_st") %>% 
   mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
   ggplot( aes(x=US_code, y=count_st))+
-  geom_bar(stat="identity", fill="#f68060", alpha=.9) +
-    coord_flip() + xlab("")
+  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-2.png)<!-- -->
@@ -144,8 +142,8 @@ We are using Wikidata to import
 letters to state name.
 
 ``` r
-wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states') %>%
-  content("text") %>%
+wiki_get<- GET('https://www.wikidata.org/wiki/Wikidata:Lists/US_states')%>%
+  content("text")%>%
   readHTMLTable(trim=T, as.data.frame=T, header= T, skip.rows = 1)
   
 df_fire<- wiki_get[[1]] %>%
@@ -159,10 +157,10 @@ kable(df_fire[sample(1:703,4),c(1,2,5)])
 
 |     | State          | US_code | Year |
 |:----|:---------------|:--------|-----:|
-| 397 | Missouri       | MO      | 2017 |
-| 579 | Texas          | TX      | 2019 |
-| 385 | Maryland       | MD      | 2015 |
-| 565 | South Carolina | SC      | 2015 |
+| 516 | Oklahoma       | OK      | 2017 |
+| 246 | Georgia        | GA      | 2016 |
+| 339 | Massachusetts  | MA      | 2018 |
+| 414 | North Carolina | NC      | 2016 |
 
 ### Download Automation
 
@@ -235,12 +233,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                               PUMA                               | Average_Wage | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:----------------------------------------------------------------:|:------------:|:--------:|
-|  Kentucky  | 2016 |   1220    |    73864     |   KY    | state of the United States | Northern Kentucky Area Development District (Southeast) PUMA, KY |   46975.10   |  10.76   |
-| New Jersey | 2019 |    727    |    11346     |   NJ    | state of the United States |            Burlington County (South & East) PUMA, NJ             |   42108.97   |  10.65   |
-|  Oklahoma  | 2019 |   1104    |    67142     |   OK    | state of the United States |                        Enid City PUMA, OK                        |   89943.48   |  11.41   |
-|  Montana   | 2014 |   1646    |    38118     |   MT    | state of the United States |                    Great Falls City PUMA, MT                     |   29044.54   |  10.28   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                      PUMA                       | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-----------------------------------------------:|:------------:|:--------:|
+| California | 2018 |   8054    |   1823153    |   CA    | state of the United States |  Galt, Isleton Cities & Delta Region PUMA, CA   |   59491.72   |  10.99   |
+|  Florida   | 2018 |   2249    |    138820    |   FL    | state of the United States |            Okaloosa County PUMA, FL             |   68545.29   |  11.14   |
+| California | 2018 |   8054    |   1823153    |   CA    | state of the United States |            El Dorado Hills PUMA, CA             |   95014.40   |  11.46   |
+|   Texas    | 2014 |   9677    |    131138    |   TX    | state of the United States | Van Zandt, Wood, Camp & Rains Counties PUMA, TX |   51367.53   |  10.85   |
 
 ## Overlooking the Data
 
@@ -291,7 +289,7 @@ fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
   geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
-   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
+  theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
         plot.background = element_rect(fill = "grey"),
         legend.key.height = unit(1, 'cm'), #change legend key height
         legend.text = element_text(size=1) #change legend text font size
@@ -301,7 +299,7 @@ fire_full %>% filter(!State%in% big_2)%>%
 
 ![](firefighters_lm_wildfires_files/figure-gfm/fire%20progress-2.png)<!-- -->
 
-Were we can see the distribution of avarage wage of all States & big 6.
+Were we can see the distribution of Average wage of all States & big 6.
 In addition, tehere is boxplot of the big 6 wages.
 
 ``` r
@@ -327,7 +325,7 @@ fire_full %>% filter(big6) %>%
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
                                quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
-  labs(title = 'Avarage Wage by State of big 6')+ xlab("Average Wage")+
+  labs(title = 'Average Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
     theme(
       legend.position="none", panel.spacing = unit(0.1, "lines"),
@@ -402,6 +400,10 @@ anova(lm_year , lm_comb) #anova test to State effect
 sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
 ```
+
+    ## Registered S3 method overwritten by 'parameters':
+    ##   method                         from      
+    ##   format.parameters_distribution datawizard
 
 <table style="border-collapse:collapse; border:none;">
 <tr>
