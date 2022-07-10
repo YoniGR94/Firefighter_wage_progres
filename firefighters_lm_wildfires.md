@@ -1,13 +1,13 @@
 Firefighters’ Wage and the Effect of Global Warming
 ================
-Yoni
-2022-04-04
+Yoni g.
+2022-07-10
 
 ## Intro
 
-The goal of this portfolio is to try to find up weather firefighters
-gain more wage for more work, in general. As a result of the global
-warming, wildfires became more common all over the US.
+The portfolio’s goal is to try to find up weather firefighters gain more
+wage for more work, in general. As a result of the global warming,
+wildfires became more common all over the US.
 
 One can ask, should the work of emergency, ans specifically
 firefighters, be paid by the amount of cases?
@@ -36,7 +36,7 @@ USA](https://datausa.io/profile/soc/firefighters), and comparing it to
 available data about wildfires. We will see that although the sample is
 too small, some information can be found.
 
-so let’s get started with the libraries:
+So let’s get started with the libraries:
 
 ## Set data
 
@@ -45,7 +45,7 @@ library(easypackages)
 #tools
 libraries('tidyverse','XML',"httr",'jsonlite')
 #visuals
-libraries('ggpubr','knitr')
+libraries('ggpubr','knitr', 'readxl')
 libraries('ggridges','viridis','hrbrthemes')
 ```
 
@@ -55,7 +55,6 @@ This is firemen’s salary from [Data
 USA](https://datausa.io/profile/soc/firefighters)
 
 ``` r
-library(readxl)
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
 
@@ -125,7 +124,7 @@ df_wage %>%
   count(US_code, name = "count_st") %>% 
   mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
   ggplot( aes(x=US_code, y=count_st))+
-  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")
+  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")+theme_minimal()
 ```
 
 ![](firefighters_lm_wildfires_files/figure-gfm/simple%20vis-2.png)<!-- -->
@@ -155,12 +154,12 @@ df_fire<- wiki_get[[1]] %>%
 kable(df_fire[sample(1:703,4),c(1,2,5)])
 ```
 
-|     | State          | US_code | Year |
-|:----|:---------------|:--------|-----:|
-| 516 | Oklahoma       | OK      | 2017 |
-| 246 | Georgia        | GA      | 2016 |
-| 339 | Massachusetts  | MA      | 2018 |
-| 414 | North Carolina | NC      | 2016 |
+|     | State      | US_code | Year |
+|:----|:-----------|:--------|-----:|
+| 441 | Nevada     | NV      | 2019 |
+| 118 | California | CA      | 2016 |
+| 388 | Maine      | ME      | 2019 |
+| 88  | California | CA      | 2017 |
 
 ### Download Automation
 
@@ -233,12 +232,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                      PUMA                       | Average_Wage | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-----------------------------------------------:|:------------:|:--------:|
-| California | 2018 |   8054    |   1823153    |   CA    | state of the United States |  Galt, Isleton Cities & Delta Region PUMA, CA   |   59491.72   |  10.99   |
-|  Florida   | 2018 |   2249    |    138820    |   FL    | state of the United States |            Okaloosa County PUMA, FL             |   68545.29   |  11.14   |
-| California | 2018 |   8054    |   1823153    |   CA    | state of the United States |            El Dorado Hills PUMA, CA             |   95014.40   |  11.46   |
-|   Texas    | 2014 |   9677    |    131138    |   TX    | state of the United States | Van Zandt, Wood, Camp & Rains Counties PUMA, TX |   51367.53   |  10.85   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                PUMA                | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:----------------------------------:|:------------:|:--------:|
+|  Montana   | 2014 |   1646    |    38118     |   MT    | state of the United States |     Great Falls City PUMA, MT      |   29044.54   |  10.28   |
+| New Mexico | 2014 |    728    |    23440     |   NM    | state of the United States |      Sandoval County PUMA, NM      |   39243.92   |  10.58   |
+|  Oklahoma  | 2019 |   1104    |    67142     |   OK    | state of the United States |         Enid City PUMA, OK         |   89943.48   |  11.41   |
+|  Indiana   | 2019 |    38     |     523      |   IN    | state of the United States | Hancock & Shelby Counties PUMA, IN |   66627.06   |  11.11   |
 
 ## Overlooking the Data
 
@@ -247,7 +246,29 @@ in some analyzing I compare the result to the top 6 reported states. we
 will see that there is also difference in the mean wage. This difference
 is significant, as we checked it t test.
 
+``` r
+#לתקן את כל הצ'אנק
+big_n<- fire_full %>%
+  count(State, sort = T, name = 'size')
+
+fire_full<- fire_full %>% 
+  mutate(big6= State%in% unlist(
+    big_n%>% 
+      top_n(6, size) %>% select(1)))
+
+#big_6
+mu_fire<-  mean(fire_full$Average_Wage[-fire_full$big6])
+mu_fire6<- mean(fire_full$Average_Wage[fire_full$big6] )
+
+paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ for the top 6 reported. the difference is", round(mu_fire6-mu_fire,1),"$")
+```
+
     ## [1] "Mean of 62375.8 $ for all states, and 66461.9 $ for the top 6 reported. the difference is 4086.1 $"
+
+``` r
+t.fire<- t.test(fire_full$Average_Wage[fire_full$big6],fire_full$Average_Wage[-fire_full$big6])
+t.fire
+```
 
     ## 
     ##  Welch Two Sample t-test
@@ -261,7 +282,7 @@ is significant, as we checked it t test.
     ## mean of x mean of y 
     ##  66461.93  62375.83
 
-Here are the progress of acres burned in the us. from a quick look at da
+Here are the progress of acres burned in the us. From a quick look at da
 data we see that California and Alaska suffer the most from wildfires,
 and also has the biggest change in wildfires
 
@@ -300,20 +321,17 @@ fire_full %>% filter(!State%in% big_2)%>%
 ![](firefighters_lm_wildfires_files/figure-gfm/fire%20progress-2.png)<!-- -->
 
 Were we can see the distribution of Average wage of all States & big 6.
-In addition, tehere is boxplot of the big 6 wages.
+In addition, there is a boxplot of the big 6 wages.
 
 ``` r
-fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= big6))+
+fire_full %>% ggplot(aes(x= Average_Wage, fill= big6))+
   scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
   geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
-  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown",
-             lty= "dashed", size= 0.5)+
-  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen" ,
-             lty= 'dashed', size= 0.5)+
-  labs(title = "Average Wage Curve",caption="orange: big 6 states,
-       green: the rest of states")+ scale_x_continuous(labels = scales::comma)+
+  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown"  , lty= "dashed", size= 0.5)+
+  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen", lty= 'dashed', size= 0.5)+
+  labs(title = "Average Wage Curve",caption="Orange: big 6 states, Green: the rest of states")+
+  scale_x_continuous(labels = scales::comma)+
   theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))
 ```
 
@@ -322,8 +340,7 @@ fire_full %>%
 ``` r
 fire_full %>% filter(big6) %>% 
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
-                               quantile_lines = TRUE, quantiles = 2)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005, quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
   labs(title = 'Average Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
@@ -400,10 +417,6 @@ anova(lm_year , lm_comb) #anova test to State effect
 sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
                   collapse.se = T,dv.labels = c("lm comb","lm year","lm state"))
 ```
-
-    ## Registered S3 method overwritten by 'parameters':
-    ##   method                         from      
-    ##   format.parameters_distribution datawizard
 
 <table style="border-collapse:collapse; border:none;">
 <tr>
@@ -2064,7 +2077,7 @@ We evaluated there is no effect of the wildfires cases on firefighters
 wage. We say this is not necessarily bad.
 
 In my opinion, the intensiveness of the firefighters shifts can be
-reflected in their salary as a limited bonus.This way, the salary will
+reflected in their salary as a limited bonus. This way, the salary will
 not be too varied, but the hard work will be rewarded with extra pay. In
 addition, a long-term salary plan that will attract good potential
 firefighters is a basic need in any planned planned market with demand

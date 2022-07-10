@@ -1,6 +1,6 @@
 ---
 title: "Firefighters' Wage and the Effect of Global Warming"
-author: "Yoni"
+author: "Yoni g."
 date: "`r Sys.Date()`"
 output: github_document
 always_allow_html: true
@@ -8,7 +8,7 @@ always_allow_html: true
 
 ## Intro
 
-The goal of this portfolio is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
+The portfolio's goal is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
 
 One can ask, should the work of emergency, ans specifically firefighters, be paid by the amount of cases?
 
@@ -32,7 +32,7 @@ Cons:
 
 The method is using data from the API fo [Data USA](https://datausa.io/profile/soc/firefighters), and comparing it to available data about wildfires. We will see that although the sample is too small, some information can be found.
 
-so let's get started with the libraries:
+So let's get started with the libraries:
 
 ## Set data
 
@@ -41,7 +41,7 @@ library(easypackages)
 #tools
 libraries('tidyverse','XML',"httr",'jsonlite')
 #visuals
-libraries('ggpubr','knitr')
+libraries('ggpubr','knitr', 'readxl')
 libraries('ggridges','viridis','hrbrthemes')
 ```
 
@@ -50,7 +50,6 @@ libraries('ggridges','viridis','hrbrthemes')
 This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefighters)
 
 ```{r data usa api, message=FALSE, warning=FALSE}
-library(readxl)
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
 
@@ -86,7 +85,7 @@ df_wage %>%
   count(US_code, name = "count_st") %>% 
   mutate(US_code = fct_reorder(US_code, desc(count_st))) %>%
   ggplot( aes(x=US_code, y=count_st))+
-  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")
+  geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")+theme_minimal()
 
 df_wage<- df_wage %>%
   mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
@@ -177,7 +176,7 @@ kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 
 We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
-```{r vizualization, warning=FALSE, message=FALSE, echo=F}
+```{r vizualization, warning=FALSE, message=FALSE}
 #לתקן את כל הצ'אנק
 big_n<- fire_full %>%
   count(State, sort = T, name = 'size')
@@ -197,7 +196,7 @@ t.fire<- t.test(fire_full$Average_Wage[fire_full$big6],fire_full$Average_Wage[-f
 t.fire
 ```
 
-Here are the progress of acres burned in the us. from a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
+Here are the progress of acres burned in the us. From a quick look at da data we see that California and Alaska suffer the most from wildfires, and also has the biggest change in wildfires
 
 ```{r fire progress, warning=FALSE, message=FALSE}
 big_2 <- unlist(fire_full %>%
@@ -223,26 +222,22 @@ fire_full %>% filter(!State%in% big_2)%>%
   theme_dark()+ylim(0,400000) #+scale_y_continuous(labels = scales::comma)
 ```
 
-Were we can see the distribution of Average wage of all States & big 6. In addition, tehere is boxplot of the big 6 wages.
+Were we can see the distribution of Average wage of all States & big 6. In addition, there is a boxplot of the big 6 wages.
 
 ```{r histogram, warning=FALSE, message=FALSE}
-fire_full %>%
-  ggplot(aes(x= Average_Wage, fill= big6))+
+fire_full %>% ggplot(aes(x= Average_Wage, fill= big6))+
   scale_fill_brewer(palette="Set2")+theme(legend.position="none")+
   geom_density(color= "black",position="identity",alpha=0.75 )+
   geom_vline(xintercept= mu_fire, color="black", lty= 1, size=0.75)+
-  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown",
-             lty= "dashed", size= 0.5)+
-  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen" ,
-             lty= 'dashed', size= 0.5)+
-  labs(title = "Average Wage Curve",caption="orange: big 6 states,
-       green: the rest of states")+ scale_x_continuous(labels = scales::comma)+
+  geom_vline(xintercept= t.fire$estimate[1], color="sandybrown"  , lty= "dashed", size= 0.5)+
+  geom_vline(xintercept= t.fire$estimate[2], color="darkseagreen", lty= 'dashed', size= 0.5)+
+  labs(title = "Average Wage Curve",caption="Orange: big 6 states, Green: the rest of states")+
+  scale_x_continuous(labels = scales::comma)+
   theme(plot.title = element_text(size=12,hjust = 0.5,face = "bold"))
 
 fire_full %>% filter(big6) %>% 
   ggplot(aes(x= Average_Wage, y=State, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005,
-                               quantile_lines = TRUE, quantiles = 2)+
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.005, quantile_lines = TRUE, quantiles = 2)+
   scale_fill_viridis(name = "Wage", option = "D", alpha = 0.95)+ylab(" ")+
   labs(title = 'Average Wage by State of big 6')+ xlab("Average Wage")+
   theme_ipsum() +scale_x_continuous(labels=scales::comma,limits = c(0,200000))+
@@ -279,20 +274,17 @@ Although visually the effect of time is minor, there are some trends. Note that 
 Here we will try to see whether there is effect of number of acres burned to average wage. surprisingly, there is none.
 
 ```{r AB vis, warning=FALSE, message=FALSE, echo=F}
-A<- fire_full %>%
+
+fire_full %>%
+  mutate(big6= ifelse(big6== T,"Big 6","The rest")) %>% 
   ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
-  labs(title = "Acres Effect on Wage State of All")+xlab("Acres burned")+
-  scale_x_continuous(labels = scales::comma, limits = c(0,2500000))
-
-B<-fire_full %>%
-  filter(big6) %>% 
-  ggplot(aes(x= Acres_burned ,y= log_Wage))+geom_smooth()+
-  geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
-  labs(title= "Acres Effect on Wage State of Big 6",caption= "red: lm model, blue: loess model")+
-  xlab("Acres burned")+ scale_x_continuous(labels = scales::comma, limits = c(0,2500000))
-
-ggarrange(A,B, ncol = 1, nrow = 2)
+  labs(title= "Acres Effect on Wage State of Big 6",caption= "Red: lm model, Blue: loess model")+
+  xlab("Acres burned")+ scale_x_continuous(labels = scales::comma, limits = c(0,3e6))+
+  scale_y_continuous(labels = scales::comma)+
+  ggpubr::stat_regline_equation(label.y = 10, aes(label = ..eq.label..))+
+  ggpubr::stat_regline_equation(label.y = 9.5, aes(label = ..rr.label..))+
+  facet_wrap(.~big6,2)
 ```
 
 Clearly, there is no positive effect of burned Acres on average wages, and there might be even negative correlation. even though, I do not believe this is causation.
@@ -388,7 +380,9 @@ fire_full %>% filter(big6) %>%
   ylab("Wage")+theme_bw()+  scale_y_continuous(labels = scales::comma)+
   labs(fill="Year")+stat_poly_eq(formula = Average_Wage~Year, 
                 aes(label = paste(..eq.label.., ..rr.label..,sep = "~~~"))
-                ,parse = TRUE,label.x.npc = "right")
+                ,parse = TRUE,label.x.npc = "right")+
+  ggpubr::stat_regline_equation(label.y = 75000, aes(label = ..eq.label..))+
+  ggpubr::stat_regline_equation(label.y = 74000, aes(label = ..rr.label..))
 #geom_text(x= 2015, y= 75000,label= as.character(as.expression((year_paste))),parse = T)#??
 ```
 
@@ -398,6 +392,6 @@ As usual when it comes to wages, the effect is more stable manually than the cau
 
 We evaluated there is no effect of the wildfires cases on firefighters wage. We say this is not necessarily bad.
 
-In my opinion, the intensiveness of the firefighters shifts can be reflected in their salary as a limited bonus.This way, the salary will not be too varied, but the hard work will be rewarded with extra pay. In addition, a long-term salary plan that will attract good potential firefighters is a basic need in any planned planned market with demand growth.
+In my opinion, the intensiveness of the firefighters shifts can be reflected in their salary as a limited bonus. This way, the salary will not be too varied, but the hard work will be rewarded with extra pay. In addition, a long-term salary plan that will attract good potential firefighters is a basic need in any planned planned market with demand growth.
 
 otherwise, in a moment of need, the firefighters can just look for another job, like the [CNN told in 2021](https://edition.cnn.com/2021/06/26/us/california-wildfires-hotshot-firefighter-shortage/index.html)
