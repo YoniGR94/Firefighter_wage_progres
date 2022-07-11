@@ -281,9 +281,10 @@ fire_full %>%
   geom_smooth(method = "lm", colour= "red")+ylim(9.75,11.2)+
   labs(title= "Acres Effect on Wage State of Big 6",caption= "Red: lm model, Blue: loess model")+
   xlab("Acres burned")+ scale_x_continuous(labels = scales::comma, limits = c(0,3e6))+
-  scale_y_continuous(labels = scales::comma)+
+  scale_y_continuous(labels = scales::comma)+theme_bw()+
   ggpubr::stat_regline_equation(label.y = 10, aes(label = ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 9.5, aes(label = ..rr.label..))+
+  theme(panel.grid.major = element_line(colour = "gray80"))+
   facet_wrap(.~big6,2)
 ```
 
@@ -381,6 +382,7 @@ fire_full %>% filter(big6) %>%
   labs(fill="Year")+stat_poly_eq(formula = Average_Wage~Year, 
                 aes(label = paste(..eq.label.., ..rr.label..,sep = "~~~"))
                 ,parse = TRUE,label.x.npc = "right")+
+  theme(panel.grid.major = element_line(colour = "gray80"))+
   ggpubr::stat_regline_equation(label.y = 75000, aes(label = ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 74000, aes(label = ..rr.label..))
 #geom_text(x= 2015, y= 75000,label= as.character(as.expression((year_paste))),parse = T)#??

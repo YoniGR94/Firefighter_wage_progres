@@ -1,7 +1,7 @@
 Firefighters’ Wage and the Effect of Global Warming
 ================
 Yoni g.
-2022-07-10
+2022-07-11
 
 ## Intro
 
@@ -154,12 +154,12 @@ df_fire<- wiki_get[[1]] %>%
 kable(df_fire[sample(1:703,4),c(1,2,5)])
 ```
 
-|     | State      | US_code | Year |
-|:----|:-----------|:--------|-----:|
-| 441 | Nevada     | NV      | 2019 |
-| 118 | California | CA      | 2016 |
-| 388 | Maine      | ME      | 2019 |
-| 88  | California | CA      | 2017 |
+|     | State          | US_code | Year |
+|:----|:---------------|:--------|-----:|
+| 194 | Florida        | FL      | 2019 |
+| 352 | Massachusetts  | MA      | 2017 |
+| 561 | South Carolina | SC      | 2016 |
+| 565 | South Carolina | SC      | 2015 |
 
 ### Download Automation
 
@@ -232,12 +232,12 @@ Here are some rows from the data I combined
 kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                PUMA                | Average_Wage | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:----------------------------------:|:------------:|:--------:|
-|  Montana   | 2014 |   1646    |    38118     |   MT    | state of the United States |     Great Falls City PUMA, MT      |   29044.54   |  10.28   |
-| New Mexico | 2014 |    728    |    23440     |   NM    | state of the United States |      Sandoval County PUMA, NM      |   39243.92   |  10.58   |
-|  Oklahoma  | 2019 |   1104    |    67142     |   OK    | state of the United States |         Enid City PUMA, OK         |   89943.48   |  11.41   |
-|  Indiana   | 2019 |    38     |     523      |   IN    | state of the United States | Hancock & Shelby Counties PUMA, IN |   66627.06   |  11.11   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                          PUMA                           | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-------------------------------------------------------:|:------------:|:--------:|
+| Washington | 2019 |   1394    |    169742    |   WA    | state of the United States |          Lake Stevens & Monroe Cities PUMA, WA          |   78945.97   |  11.28   |
+|  Montana   | 2016 |   2026    |    114594    |   MT    | state of the United States |      East Montana (Outside Billings City) PUMA, MT      |   16472.03   |   9.71   |
+|  Missouri  | 2018 |    103    |     6025     |   MO    | state of the United States |             St. Louis City (South) PUMA, MO             |   74527.27   |  11.22   |
+|  Arizona   | 2018 |   2000    |    165356    |   AZ    | state of the United States | Gila, Graham, Greenlee & Pinal (East) Counties PUMA, AZ |   29839.70   |  10.30   |
 
 ## Overlooking the Data
 
