@@ -1,12 +1,12 @@
 Firefighters’ Wage and the Effect of Global Warming
 ================
 Yoni g.
-2022-07-11
+2022-08-11
 
 ## Intro
 
-The portfolio’s goal is to try to find up weather firefighters gain more
-wage for more work, in general. As a result of the global warming,
+This portfolio’s goal is to try to find up weather firefighters gain
+more wage for more work, in general. As a result of the global warming,
 wildfires became more common all over the US.
 
 One can ask, should the work of emergency, ans specifically
@@ -62,35 +62,6 @@ get_fire<- GET(wage_rl) %>%
   content(as= 'text', encoding = "UTF-8") %>%
   fromJSON(.) %>% glimpse(.)
 ```
-
-    ## List of 2
-    ##  $ data  :'data.frame':  703 obs. of  11 variables:
-    ##   ..$ ID PUMA              : chr [1:703] "79500US0100200" "79500US0100800" "79500US0101100" "79500US0101304" ...
-    ##   ..$ PUMA                 : chr [1:703] "Huntsville City (Far West & Southwest) PUMA, AL" "St. Clair & Blount Counties PUMA, AL" "Calhoun County PUMA, AL" "Trussville, Center Point & Gardendale Cities PUMA, AL" ...
-    ##   ..$ ID Year              : int [1:703] 2019 2019 2019 2019 2019 2019 2019 2019 2019 2019 ...
-    ##   ..$ Year                 : chr [1:703] "2019" "2019" "2019" "2019" ...
-    ##   ..$ Average Wage         : num [1:703] 53303 61310 72722 59759 44737 ...
-    ##   ..$ Average Wage Appx MOE: num [1:703] 7355 14980 20291 20976 29447 ...
-    ##   ..$ Record Count         : int [1:703] 10 7 5 9 5 5 6 10 6 6 ...
-    ##   ..$ Slug PUMA            : chr [1:703] "huntsville-city-far-west-southwest-puma-al" "st-clair-blount-counties-puma-al" "calhoun-county-puma-al" "trussville-center-point-gardendale-cities-puma-al" ...
-    ##   ..$ PUMS Occupation      : chr [1:703] "Firefighters" "Firefighters" "Firefighters" "Firefighters" ...
-    ##   ..$ ID PUMS Occupation   : chr [1:703] "332011" "332011" "332011" "332011" ...
-    ##   ..$ Slug PUMS Occupation : chr [1:703] "firefighters" "firefighters" "firefighters" "firefighters" ...
-    ##  $ source:'data.frame':  1 obs. of  4 variables:
-    ##   ..$ measures     :List of 1
-    ##   .. ..$ : chr [1:3] "Average Wage" "Average Wage Appx MOE" "Record Count"
-    ##   ..$ annotations  :'data.frame':    1 obs. of  8 variables:
-    ##   .. ..$ source_name       : chr "Census Bureau"
-    ##   .. ..$ source_description: chr "The American Community Survey (ACS) Public Use Microdata Sample (PUMS) files are a set of untabulated records a"| __truncated__
-    ##   .. ..$ dataset_name      : chr "ACS PUMS 1-Year Estimate"
-    ##   .. ..$ dataset_link      : chr "https://census.gov/programs-surveys/acs/technical-documentation/pums.html"
-    ##   .. ..$ subtopic          : chr "Demographics"
-    ##   .. ..$ table_id          : chr "PUMS"
-    ##   .. ..$ topic             : chr "Diversity"
-    ##   .. ..$ hidden_measures   : chr "ygbpop RCA,ygopop RCA,ygipop RCA,yocpop RCA,yiopop RCA,ycbpop RCA"
-    ##   ..$ name         : chr "pums_1"
-    ##   ..$ substitutions:List of 1
-    ##   .. ..$ : list()
 
 Now we will organize it a little bit
 
@@ -154,12 +125,12 @@ df_fire<- wiki_get[[1]] %>%
 kable(df_fire[sample(1:703,4),c(1,2,5)])
 ```
 
-|     | State          | US_code | Year |
-|:----|:---------------|:--------|-----:|
-| 194 | Florida        | FL      | 2019 |
-| 352 | Massachusetts  | MA      | 2017 |
-| 561 | South Carolina | SC      | 2016 |
-| 565 | South Carolina | SC      | 2015 |
+|     | State    | US_code | Year |
+|:----|:---------|:--------|-----:|
+| 240 | Georgia  | GA      | 2018 |
+| 512 | Oklahoma | OK      | 2019 |
+| 582 | Texas    | TX      | 2019 |
+| 320 | Kentucky | KY      | 2019 |
 
 ### Download Automation
 
@@ -173,7 +144,8 @@ but the imported data from Data USA reach only 2019.
 ``` r
 call_fire<- function(x,year, m_TF= T)
   {
-  my_get<- GET(x) %>%
+  x_url<- paste0('https://www.iii.org/table-archive/', x, '/file')
+  my_get<- GET(x_url) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
   if(m_TF) {my_get<- bind_rows(my_get)[4:6] }
@@ -188,66 +160,46 @@ call_fire<- function(x,year, m_TF= T)
 ```
 
 ``` r
-df_14<- call_fire("https://www.iii.org/table-archive/214725/file", 2014)
-df_15<- call_fire("https://www.iii.org/table-archive/218674/file", 2015)
-df_16<- call_fire("https://www.iii.org/table-archive/220226/file", 2016)
-df_17<- call_fire("https://www.iii.org/table-archive/220932/file", 2017)
-df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)
-df_19<- call_fire("https://www.iii.org/table-archive/222809/file", 2019)
+df_14<- call_fire("214725", 2014)
+df_15<- call_fire("218674", 2015)
+df_16<- call_fire("220226", 2016)
+df_17<- call_fire("220932", 2017)
+df_18<- call_fire("221865", 2018, F)
+df_19<- call_fire("222809", 2019)
 
 firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
   mutate(across(c(fires_Num,Acres_burned), ~replace(.,.=='(1)', '0')),
          across(c(fires_Num,Acres_burned), ~parse_number(.)),
-         across(State, ~replace(.,.=='New York ', "New York") ) )%>%
+         State= str_squish(State)) %>% 
+         #across(State, ~replace(.,.=='New York ', "New York") ) )%>%
   filter(!str_detect(State, "United States")) #%>%
 
 fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
   select(-c(9:10))
-#fix NY לתקן
-sort(unique(firelist$State))
-```
 
-    ##  [1] "Alabama"              "Alaska"               "Arizona"             
-    ##  [4] "Arkansas"             "California"           "Colorado"            
-    ##  [7] "Connecticut"          "Delaware"             "District of Columbia"
-    ## [10] "Florida"              "Georgia"              "Hawaii"              
-    ## [13] "Idaho"                "Illinois"             "Indiana"             
-    ## [16] "Iowa"                 "Kansas"               "Kentucky"            
-    ## [19] "Louisiana"            "Maine"                "Maryland"            
-    ## [22] "Massachusetts"        "Michigan"             "Minnesota"           
-    ## [25] "Mississippi"          "Missouri"             "Montana"             
-    ## [28] "Nebraska"             "Nevada"               "New Hampshire"       
-    ## [31] "New Jersey"           "New Mexico"           "New York"            
-    ## [34] "New York "            "North Carolina"       "North Dakota"        
-    ## [37] "Ohio"                 "Oklahoma"             "Oregon"              
-    ## [40] "Pennsylvania"         "Puerto Rico"          "Rhode Island"        
-    ## [43] "South Carolina"       "South Dakota"         "Tennessee"           
-    ## [46] "Texas"                "Utah"                 "Vermont"             
-    ## [49] "Virginia"             "Washington"           "West Virginia"       
-    ## [52] "Wisconsin"            "Wyoming"
+#firelist %>% select(State, Year) %>% count(State)
+```
 
 Here are some rows from the data I combined
 
 ``` r
-kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
+kable(fire_full[sample(1:600,3),], digits = 2,row.names = F, align = 'c')
 ```
 
-|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                          PUMA                           | Average_Wage | log_Wage |
-|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:-------------------------------------------------------:|:------------:|:--------:|
-| Washington | 2019 |   1394    |    169742    |   WA    | state of the United States |          Lake Stevens & Monroe Cities PUMA, WA          |   78945.97   |  11.28   |
-|  Montana   | 2016 |   2026    |    114594    |   MT    | state of the United States |      East Montana (Outside Billings City) PUMA, MT      |   16472.03   |   9.71   |
-|  Missouri  | 2018 |    103    |     6025     |   MO    | state of the United States |             St. Louis City (South) PUMA, MO             |   74527.27   |  11.22   |
-|  Arizona   | 2018 |   2000    |    165356    |   AZ    | state of the United States | Gila, Graham, Greenlee & Pinal (East) Counties PUMA, AZ |   29839.70   |  10.30   |
+|   State    | Year | fires_Num | Acres_burned | US_code |        Instance_of         |                           PUMA                           | Average_Wage | log_Wage |
+|:----------:|:----:|:---------:|:------------:|:-------:|:--------------------------:|:--------------------------------------------------------:|:------------:|:--------:|
+| Washington | 2016 |   1272    |    293717    |   WA    | state of the United States |       Bainbridge Island City & Silverdale PUMA, WA       |   71912.16   |  11.18   |
+|    Ohio    | 2016 |    410    |     1116     |   OH    | state of the United States |                Fairfield County PUMA, OH                 |   65610.08   |  11.09   |
+| Tennessee  | 2014 |   1249    |    156391    |   TN    | state of the United States | Robertson, Dickson, Cheatham & Hickman Counties PUMA, TN |   70225.09   |  11.16   |
 
 ## Overlooking the Data
 
 We saw that the number of reports by country is very Varied. Therefore,
-in some analyzing I compare the result to the top 6 reported states. we
+in some analyzing I compare the result to the top 6 reported states. We
 will see that there is also difference in the mean wage. This difference
 is significant, as we checked it t test.
 
 ``` r
-#לתקן את כל הצ'אנק
 big_n<- fire_full %>%
   count(State, sort = T, name = 'size')
 
@@ -263,7 +215,7 @@ mu_fire6<- mean(fire_full$Average_Wage[fire_full$big6] )
 paste("Mean of", round(mu_fire,1),"$ for all states, and",round(mu_fire6,1), "$ for the top 6 reported. the difference is", round(mu_fire6-mu_fire,1),"$")
 ```
 
-    ## [1] "Mean of 62375.8 $ for all states, and 66461.9 $ for the top 6 reported. the difference is 4086.1 $"
+    ## [1] "Mean of 62612.7 $ for all states, and 69973.5 $ for the top 6 reported. the difference is 7360.8 $"
 
 ``` r
 t.fire<- t.test(fire_full$Average_Wage[fire_full$big6],fire_full$Average_Wage[-fire_full$big6])
@@ -274,13 +226,13 @@ t.fire
     ##  Welch Two Sample t-test
     ## 
     ## data:  fire_full$Average_Wage[fire_full$big6] and fire_full$Average_Wage[-fire_full$big6]
-    ## t = 1.9506, df = 478.19, p-value = 0.05168
+    ## t = 3.5554, df = 489.98, p-value = 0.000414
     ## alternative hypothesis: true difference in means is not equal to 0
     ## 95 percent confidence interval:
-    ##   -29.96041 8202.15274
+    ##   3293.005 11428.650
     ## sample estimates:
     ## mean of x mean of y 
-    ##  66461.93  62375.83
+    ##  69973.50  62612.67
 
 Here are the progress of acres burned in the us. From a quick look at da
 data we see that California and Alaska suffer the most from wildfires,
@@ -308,7 +260,7 @@ fire_full %>% filter(State%in% big_2)%>%
 ``` r
 fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
-  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
+  geom_smooth(size= 0.7,method = "lm", se= F)+#scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
         plot.background = element_rect(fill = "grey"),
@@ -1623,13 +1575,13 @@ p
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-62331.65<br>(1298.48)
+62639.67<br>(1290.82)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-56185.72<br>(5666.53)
+70910.07<br>(5268.66)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1649,32 +1601,13 @@ Acres burned
 -0.00<br>(0.00)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.988
+0.898
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.00<br>(0.01)
+0.00<br>(0.00)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.494
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-US code \[CA\]
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-14322.89<br>(7099.95)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.045</strong>
+0.539
 </td>
 </tr>
 <tr>
@@ -1690,10 +1623,10 @@ US code \[FL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-3148.78<br>(6851.34)
+-11528.00<br>(6190.33)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.646
+0.064
 </td>
 </tr>
 <tr>
@@ -1709,10 +1642,29 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-19220.57<br>(7530.44)
+4496.62<br>(7115.54)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.011</strong>
+0.528
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+US code \[NY\]
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+19157.59<br>(7222.10)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+<strong>0.008</strong>
 </td>
 </tr>
 <tr>
@@ -1728,10 +1680,10 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-1771.18<br>(6841.01)
+-12820.07<br>(5688.98)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.796
+<strong>0.025</strong>
 </td>
 </tr>
 <tr>
@@ -1747,10 +1699,10 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-11036.00<br>(7779.61)
+-3502.90<br>(6448.38)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.157
+0.587
 </td>
 </tr>
 <tr>
@@ -1761,10 +1713,10 @@ Observations
 81
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-583
+589
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-258
+262
 </td>
 </tr>
 <tr>
@@ -1778,7 +1730,7 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 0.000 / -0.002
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.069 / 0.046
+0.120 / 0.100
 </td>
 </tr>
 <tr>
@@ -1789,10 +1741,10 @@ log-Likelihood
 -961.919
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--6783.518
+-6853.767
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--3000.925
+-3038.134
 </td>
 </tr>
 </table>
@@ -1865,13 +1817,13 @@ p
 0.407
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-61977.08<br>(1519.20)
+62391.51<br>(1507.43)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 <strong>\<0.001</strong>
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-62888.69<br>(7194.07)
+98403.77<br>(19510.28)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
 <strong>\<0.001</strong>
@@ -1888,35 +1840,16 @@ fires Num
 0.818
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.12<br>(0.36)
+0.06<br>(0.36)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-0.733
+0.867
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
--3.12<br>(2.47)
+-3.08<br>(2.40)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.208
-</td>
-</tr>
-<tr>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
-US code \[CA\]
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-35828.53<br>(16525.37)
-</td>
-<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-<strong>0.031</strong>
+0.199
 </td>
 </tr>
 <tr>
@@ -1932,10 +1865,10 @@ US code \[FL\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-4245.98<br>(6913.85)
+-31361.85<br>(14416.38)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.540
+<strong>0.031</strong>
 </td>
 </tr>
 <tr>
@@ -1951,10 +1884,29 @@ US code \[MA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-15309.35<br>(7791.70)
+-20240.52<br>(18040.82)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.051
+0.263
+</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">
+US code \[NY\]
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
+-7906.59<br>(19810.13)
+</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
+0.690
 </td>
 </tr>
 <tr>
@@ -1970,10 +1922,10 @@ US code \[TX\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-23913.17<br>(18699.56)
+-11948.99<br>(5295.64)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.202
+<strong>0.025</strong>
 </td>
 </tr>
 <tr>
@@ -1989,10 +1941,10 @@ US code \[WA\]
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">
-10553.20<br>(7763.43)
+-25021.72<br>(16714.91)
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  col7">
-0.175
+0.136
 </td>
 </tr>
 <tr>
@@ -2003,10 +1955,10 @@ Observations
 81
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-583
+589
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">
-258
+262
 </td>
 </tr>
 <tr>
@@ -2020,7 +1972,7 @@ R<sup>2</sup> / R<sup>2</sup> adjusted
 0.000 / -0.002
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
-0.073 / 0.051
+0.125 / 0.104
 </td>
 </tr>
 <tr>
@@ -2031,10 +1983,10 @@ log-Likelihood
 -961.975
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--6783.460
+-6853.761
 </td>
 <td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">
--3000.349
+-3037.480
 </td>
 </tr>
 </table>

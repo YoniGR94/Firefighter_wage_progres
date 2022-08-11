@@ -8,7 +8,7 @@ always_allow_html: true
 
 ## Intro
 
-The portfolio's goal is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
+This portfolio's goal is to try to find up weather firefighters gain more wage for more work, in general. As a result of the global warming, wildfires became more common all over the US.
 
 One can ask, should the work of emergency, ans specifically firefighters, be paid by the amount of cases?
 
@@ -49,7 +49,7 @@ libraries('ggridges','viridis','hrbrthemes')
 
 This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefighters)
 
-```{r data usa api, message=FALSE, warning=FALSE}
+```{r data usa api, message=FALSE, warning=FALSE, results='hide'}
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
 
@@ -132,7 +132,8 @@ You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-st
 ```{r firefield outomation}
 call_fire<- function(x,year, m_TF= T)
   {
-  my_get<- GET(x) %>%
+  x_url<- paste0('https://www.iii.org/table-archive/', x, '/file')
+  my_get<- GET(x_url) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
   if(m_TF) {my_get<- bind_rows(my_get)[4:6] }
@@ -147,37 +148,37 @@ call_fire<- function(x,year, m_TF= T)
 ```
 
 ```{r download 2014-2018, warning=FALSE}
-df_14<- call_fire("https://www.iii.org/table-archive/214725/file", 2014)
-df_15<- call_fire("https://www.iii.org/table-archive/218674/file", 2015)
-df_16<- call_fire("https://www.iii.org/table-archive/220226/file", 2016)
-df_17<- call_fire("https://www.iii.org/table-archive/220932/file", 2017)
-df_18<- call_fire("https://www.iii.org/table-archive/221865/file", 2018, F)
-df_19<- call_fire("https://www.iii.org/table-archive/222809/file", 2019)
+df_14<- call_fire("214725", 2014)
+df_15<- call_fire("218674", 2015)
+df_16<- call_fire("220226", 2016)
+df_17<- call_fire("220932", 2017)
+df_18<- call_fire("221865", 2018, F)
+df_19<- call_fire("222809", 2019)
 
 firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
   mutate(across(c(fires_Num,Acres_burned), ~replace(.,.=='(1)', '0')),
          across(c(fires_Num,Acres_burned), ~parse_number(.)),
-         across(State, ~replace(.,.=='New York ', "New York") ) )%>%
+         State= str_squish(State)) %>% 
+         #across(State, ~replace(.,.=='New York ', "New York") ) )%>%
   filter(!str_detect(State, "United States")) #%>%
 
 fire_full<- merge(firelist, df_fire, by= c("State", "Year")) %>%
   select(-c(9:10))
-#fix NY לתקן
-sort(unique(firelist$State))
+
+#firelist %>% select(State, Year) %>% count(State)
 ```
 
 Here are some rows from the data I combined
 
 ```{r lable fire_full}
-kable(fire_full[sample(1:600,4),], digits = 2,row.names = F, align = 'c')
+kable(fire_full[sample(1:600,3),], digits = 2,row.names = F, align = 'c')
 ```
 
 ## Overlooking the Data
 
-We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. we will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
+We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. We will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
 ```{r vizualization, warning=FALSE, message=FALSE}
-#לתקן את כל הצ'אנק
 big_n<- fire_full %>%
   count(State, sort = T, name = 'size')
 
@@ -212,7 +213,7 @@ fire_full %>% filter(State%in% big_2)%>%
 
 fire_full %>% filter(!State%in% big_2)%>%
   ggplot(aes(y= Acres_burned,x= Year,colour= State))+
-  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
+  geom_smooth(size= 0.7,method = "lm", se= F)+#scale_color_brewer(palette="Accent")+
   labs(title = "Burn Forrest without CA & AL", xlab= "Year")+ xlab("Year")+ylab("Wage")+
   theme(plot.margin = margin(2,10.8,2,1.8, "cm"),
         plot.background = element_rect(fill = "grey"),
@@ -264,9 +265,14 @@ fire_full %>%
 
 fire_full %>% filter(big6) %>%
   ggplot(aes(y= Average_Wage,x= Year,colour= State))+
-  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Accent")+
-  labs(title= "Average Wage by Year Big 6")+ xlab("Year")+ ylab("Wage")+
-  theme_dark()+ scale_y_continuous(labels= scales::comma)
+  geom_smooth(size=0.8, method = "lm", se= F)+scale_color_brewer(palette="Set1")+
+  geom_point(size= 0.8)+
+  labs(title= "Average Wage by Year Big 6")+ xlab("")+ ylab("Wage")+
+  theme_cleveland()+ scale_y_continuous(labels= scales::comma)+
+  theme(legend.position="bottom",
+        panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"))
 ```
 
 Although visually the effect of time is minor, there are some trends. Note that it is might due to different reported stations each year.
@@ -285,7 +291,10 @@ fire_full %>%
   ggpubr::stat_regline_equation(label.y = 10, aes(label = ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 9.5, aes(label = ..rr.label..))+
   theme(panel.grid.major = element_line(colour = "gray80"))+
-  facet_wrap(.~big6,2)
+  facet_wrap(.~big6,2)+
+  theme(panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"))
 ```
 
 Clearly, there is no positive effect of burned Acres on average wages, and there might be even negative correlation. even though, I do not believe this is causation.
@@ -376,7 +385,7 @@ year_paste<- fire_full$Average_Wage~fire_full$Year
 library(ggpmisc)
 fire_full %>% filter(big6) %>%
   ggplot(aes(y= Average_Wage,x= Year))+#, fill= factor(Year) ))+
-  geom_smooth(method = "lm")+ scale_color_brewer(palette="Accent")+
+  geom_smooth(method = "lm", color= "Red")+ scale_color_brewer(palette="Accent")+
   labs(title = "Predicted Wage by Year", xlab= "Year")+ xlab("Year")+
   ylab("Wage")+theme_bw()+  scale_y_continuous(labels = scales::comma)+
   labs(fill="Year")+stat_poly_eq(formula = Average_Wage~Year, 
@@ -384,8 +393,10 @@ fire_full %>% filter(big6) %>%
                 ,parse = TRUE,label.x.npc = "right")+
   theme(panel.grid.major = element_line(colour = "gray80"))+
   ggpubr::stat_regline_equation(label.y = 75000, aes(label = ..eq.label..))+
-  ggpubr::stat_regline_equation(label.y = 74000, aes(label = ..rr.label..))
-#geom_text(x= 2015, y= 75000,label= as.character(as.expression((year_paste))),parse = T)#??
+  ggpubr::stat_regline_equation(label.y = 74000, aes(label = ..rr.label..))+
+  theme(panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"))
 ```
 
 As usual when it comes to wages, the effect is more stable manually than the cause due to employment agreement.
