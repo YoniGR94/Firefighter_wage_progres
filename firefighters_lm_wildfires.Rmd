@@ -16,19 +16,19 @@ Here are some pros and cons:
 
 Pros:
 
-- Harder workers get paid better
+-   Harder workers get paid better
 
-- Prevent inflation in work conditions cause by cases
+-   Prevent inflation in work conditions cause by cases
 
-- Appealing workers when the are needed the most (in our case- desertification)
+-   Appealing workers when the are needed the most (in our case- desertification)
 
 Cons:
 
-- Moral Hazard against preventing emergency cases
+-   Moral Hazard against preventing emergency cases
 
-- Encouraging of splitting cases "on paper"
+-   Encouraging of splitting cases "on paper"
 
-- Cause unpredictable salary
+-   Cause unpredictable salary
 
 The method is using data from the API fo [Data USA](https://datausa.io/profile/soc/firefighters), and comparing it to available data about wildfires. We will see that although the sample is too small, some information can be found.
 
@@ -52,11 +52,11 @@ This is firemen's salary from [Data USA](https://datausa.io/profile/soc/firefigh
 ```{r data usa api, message=FALSE, warning=FALSE, results='hide'}
 wage_rl<-
   "https://datausa.io/api/data?PUMS%20Occupation=332011&drilldowns=PUMA&measure=Average%20Wage,Average%20Wage%20Appx%20MOE,Record%20Count&Record%20Count>=5"
-
 get_fire<- GET(wage_rl) %>%
   content(as= 'text', encoding = "UTF-8") %>%
   fromJSON(.) %>% glimpse(.)
 ```
+
 Now we will organize it a little bit
 
 ```{r data usa api 2}
@@ -72,6 +72,11 @@ df_wage<- get_fire$data %>%
 Here you can see the data divided by year and countries
 
 ```{r simple vis}
+df_wage %>% select(US_code) %>% table() #need fix
+
+df_wage<- df_wage %>%
+  mutate(US_code= ifelse( str_detect(US_code,"TX"),"TX", US_code)) #bug fixing place like "TX (79500US4805905)"
+
 df_wage %>%
   count(Year, name = "count_yr") %>% 
   mutate(Year = factor(Year)) %>%
@@ -88,7 +93,7 @@ df_wage %>%
   geom_bar(stat="identity", fill="#f68060", alpha=.9)+ coord_flip() + xlab("")+theme_minimal()
 
 df_wage<- df_wage %>%
-  mutate(US_code=str_replace(US_code,"(79500US4805905)", "")) #bug fixing "TX (79500US4805905)"
+  mutate(US_code= ifelse( str_detect(US_code,"TX"),"TX", US_code)) #bug fixing place like "TX (79500US4805905)"
 ```
 
 ### Wiki coder
@@ -127,7 +132,7 @@ my_get<- my_get %>%
 
 The data been taken from the [Insurance Information Institute](https://www.iii.org/table-archive/23284)
 
-You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-statistics-wildfires'), but the imported data from Data USA reach only 2019.
+You can updated data to 2021 [here]('https://www.iii.org/fact-statistic/facts-statistics-wildfires'), but the imported data from Data USA reach only 2020
 
 ```{r firefield outomation}
 call_fire<- function(x,year, m_TF= T)
@@ -136,13 +141,10 @@ call_fire<- function(x,year, m_TF= T)
   my_get<- GET(x_url) %>%
     content(as= 'text', encoding = "UTF-8") %>%
     readHTMLTable(trim=T, as.data.frame=T, header=m_TF)
-  if(m_TF) {my_get<- bind_rows(my_get)[4:6] }
-  else     {my_get<-my_get[[3]][-1,] %>% 
+  if(m_TF) {my_get<- bind_rows(my_get)[4:6] } else {my_get<-my_get[[3]][-1,] %>% 
     'colnames<-'(my_get[[3]][1,1:3]) }
-  my_get<- my_get %>%
-  'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
-  filter(!is.na(State)) %>%
-  mutate(Year= year) #year parameter for combining
+  my_get<- my_get %>% 'colnames<-'(c('State','fires_Num','Acres_burned')) %>% 
+  filter(!is.na(State)) %>% mutate(Year= year) #year parameter for combining
   return(my_get)
   }
 ```
@@ -154,8 +156,9 @@ df_16<- call_fire("220226", 2016)
 df_17<- call_fire("220932", 2017)
 df_18<- call_fire("221865", 2018, F)
 df_19<- call_fire("222809", 2019)
+df_20<- call_fire("223241", 2020)
 
-firelist<- rbind(df_14,df_15,df_16,df_18,df_19) %>%
+firelist<- rbind(df_14,df_15,df_16,df_18,df_19,df_20) %>%
   mutate(across(c(fires_Num,Acres_burned), ~replace(.,.=='(1)', '0')),
          across(c(fires_Num,Acres_burned), ~parse_number(.)),
          State= str_squish(State)) %>% 
@@ -176,7 +179,11 @@ kable(fire_full[sample(1:600,3),], digits = 2,row.names = F, align = 'c')
 
 ## Overlooking the Data
 
-We saw that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. We will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
+Here we can see the relation between the data we used:
+
+![relation-image](image/relation-image-white.png)
+
+We saw before that the number of reports by country is very Varied. Therefore, in some analyzing I compare the result to the top 6 reported states. We will see that there is also difference in the mean wage. This difference is significant, as we checked it t test.
 
 ```{r vizualization, warning=FALSE, message=FALSE}
 big_n<- fire_full %>%
@@ -202,7 +209,7 @@ Here are the progress of acres burned in the us. From a quick look at da data we
 ```{r fire progress, warning=FALSE, message=FALSE}
 big_2 <- unlist(fire_full %>%
                   count(State,wt= Acres_burned, sort = T, name = 'mean_Acres') %>% 
-                  top_n(2, mean_Acres) %>% select(1))
+                  top_n(4, mean_Acres) %>% select(1))
 as.vector(big_2)
 
 fire_full %>% filter(State%in% big_2)%>%
@@ -249,7 +256,7 @@ fire_full %>% filter(big6) %>%
 
 We see even top 6 reported states are nit homogenize group.
 
-And what about time effect? here we can see 
+And what about time effect? here we can see
 
 ```{r time vis, warning=FALSE, message=FALSE, echo=F}
 fire_full %>%
@@ -303,11 +310,11 @@ Clearly, there is no positive effect of burned Acres on average wages, and there
 
 3 models presented here of predicting the average wage
 
-- lm_year : only year effect
+-   lm_year : only year effect
 
-- lm_state: only state effect
+-   lm_state: only state effect
 
-- lm_comb : year and state effect
+-   lm_comb : year and state effect
 
 This section is a little bit long, only due to the 52 states.
 
@@ -324,13 +331,13 @@ sjPlot::tab_model(lm_comb,lm_year,lm_state, show.ci= F,show.loglik= T,
 
 We see significant effect of the year.
 
-Finally, now we will see the effect on the wage using the burned acres in some models 
+Finally, now we will see the effect on the wage using the burned acres in some models
 
-- lm_CA: only in California
+-   lm_CA: only in California
 
-- lm_big6: only the big 6
+-   lm_big6: only the big 6
 
-- lm_all all of the states
+-   lm_all all of the states
 
 ```{r by acres model}
 lm_CA<- lm(data = fire_full[fire_full$US_code=='CA',],
@@ -345,11 +352,11 @@ sjPlot::tab_model(lm_CA,lm_all,lm_big6, show.ci= F,show.loglik= T,
 
 We will do the the same for number of wildfires
 
-- lm_CA2: only in California
+-   lm_CA2: only in California
 
-- lm_big6_2: only the big 6
+-   lm_big6_2: only the big 6
 
-- lm_all2: all of the states
+-   lm_all2: all of the states
 
 ```{r by num model}
 lm_CA2<- lm(data = fire_full[fire_full$US_code=='CA',],
@@ -368,17 +375,17 @@ After all the analyzing, we got to the result and now we can see, that according
 
 As far as we can see with the data above, there is no short term correlation between wildfires and firefighters wage. Some explanation to this could be:
 
- - More fires correlated with more firefighters
+-   More fires correlated with more firefighters
 
- - Wildfires takes only a small share of the firefighters salary
+-   Wildfires takes only a small share of the firefighters salary
 
- - The effect can be seen only looking by role
+-   The effect can be seen only looking by role
 
- - Each state firm has different approach
+-   Each state firm has different approach
 
 And maybe simply there is no correlation. As far as I learn from the data, the $H_0$ of no correlation was not rejected.
 
-On the other hand, there is significant effect of the year of over 1,400$ per year, as we can see here:
+On the other hand, there is significant effect of the year of over 1,400\$ per year, as we can see here:
 
 ```{r release year, message=FALSE, warning= FALSE, echo=FALSE}
 year_paste<- fire_full$Average_Wage~fire_full$Year
