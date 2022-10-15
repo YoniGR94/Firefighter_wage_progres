@@ -1,4 +1,4 @@
-# Firefighter Wage Progres/
+# Firefighter Wage Progres
 
 __Effect of wildfires on firefighters wage in the US__
 
